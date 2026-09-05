@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -20,7 +20,6 @@ import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SeriesDao
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.ChannelEntity
-import tv.own.owntv.core.database.entity.ProfileEntity
 import tv.own.owntv.core.settings.SettingsRepository
 
 /** Product-owned presentation state backed directly by the shared OwnTV_Core database. */
@@ -48,25 +47,31 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
                 flowOf(ProductHomeState())
             } else {
                 val profileFlow = profileDao.observeById(profileId)
-                val sourcesFlow = sourceDao.observeForProfile(profileId)
-                sourcesFlow.flatMapLatest { sources ->
+                sourceDao.observeForProfile(profileId).flatMapLatest { sources ->
                     if (sources.isEmpty()) {
-                        profileFlow.map { profile -> ProductHomeState(profileName = profile?.name ?: "Profile") }
+                        profileFlow.map { profile ->
+                            ProductHomeState(profileName = profile?.name ?: "Profile")
+                        }
                     } else {
                         val sourceIds = sources.map { it.id }
+                        val channelSnapshot = flow {
+                            emit(channelDao.snapshotAll(sourceIds, 12))
+                        }
                         combine(
                             profileFlow,
                             channelDao.countAll(sourceIds),
                             movieDao.countAll(sourceIds),
                             seriesDao.countAll(sourceIds),
                             channelDao.favoritesListAlpha(profileId),
-                        ) { profile, channelCount, movieCount, seriesCount, favorites ->
+                            channelSnapshot,
+                        ) { profile, channelCount, movieCount, seriesCount, favorites, channels ->
                             ProductHomeState(
                                 profileName = profile?.name ?: "Profile",
                                 channelCount = channelCount,
                                 movieCount = movieCount,
                                 seriesCount = seriesCount,
                                 favoriteChannels = favorites.filter { it.sourceId in sourceIds }.take(12),
+                                channels = channels,
                                 hasSources = true,
                             )
                         }
@@ -82,8 +87,6 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
             if (profileId < 0L) return@launch
             val sourceIds = sourceDao.sourceIdsForProfile(profileId)
             if (sourceIds.isEmpty()) return@launch
-            // The product shell deliberately uses a bounded snapshot: the full catalog stays in
-            // Paging/OwnTV's Live screen, while Home only needs enough rows to render a fast TV rail.
             channelDao.snapshotAll(sourceIds, 12)
         }
     }
