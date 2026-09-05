@@ -2,9 +2,9 @@ name: Android
 
 on:
   push:
-    branches: ["owntv-base"]
+    branches: ["owntv-base", "feature/full-product-takeover"]
   pull_request:
-    branches: ["owntv-base"]
+    branches: ["owntv-base", "feature/full-product-takeover"]
 
 permissions:
   contents: read
