@@ -9,9 +9,8 @@ plugins {
     alias(libs.plugins.baselineprofile) apply false
 }
 
-// Product identity is owned by this repository while the Android implementation is still
-// consumed from the pinned OwnTV source tree. The namespace remains upstream-compatible;
-// the installable application id is our product id.
+// Product identity and integration points are owned by this repository while the Android
+// implementation remains sourced from the pinned OwnTV tree.
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<ApplicationExtension> {
@@ -23,7 +22,15 @@ subprojects {
                     .orElse("0.1.0")
                     .get()
             }
+
+            // OwnTV's app module is mounted from a git submodule. The manifest is deliberately
+            // supplied from the product repository so the launcher identity is ours while all
+            // OwnTV services/providers and its internal MainActivity remain available.
+            sourceSets.getByName("main") {
+                manifest.srcFile(rootProject.file("product-app/src/main/AndroidManifest.xml"))
+            }
         }
+
         dependencies.add("implementation", project(":product-ui"))
     }
 }
