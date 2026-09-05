@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -54,24 +53,19 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
                         }
                     } else {
                         val sourceIds = sources.map { it.id }
-                        val channelSnapshot = flow {
-                            emit(channelDao.snapshotAll(sourceIds, 12))
-                        }
                         combine(
                             profileFlow,
                             channelDao.countAll(sourceIds),
                             movieDao.countAll(sourceIds),
                             seriesDao.countAll(sourceIds),
                             channelDao.favoritesListAlpha(profileId),
-                            channelSnapshot,
-                        ) { profile, channelCount, movieCount, seriesCount, favorites, channels ->
+                        ) { profile, channelCount, movieCount, seriesCount, favorites ->
                             ProductHomeState(
                                 profileName = profile?.name ?: "Profile",
                                 channelCount = channelCount,
                                 movieCount = movieCount,
                                 seriesCount = seriesCount,
                                 favoriteChannels = favorites.filter { it.sourceId in sourceIds }.take(12),
-                                channels = channels,
                                 hasSources = true,
                             )
                         }
