@@ -55,6 +55,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import tv.own.owntv.core.database.entity.ChannelEntity
+import tv.own.owntv.core.launcher.LauncherDeepLink
 
 class IptvShellActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,11 +65,24 @@ class IptvShellActivity : ComponentActivity() {
             finish()
             return
         }
-        setContent { IptvPlayerShell(onOpenPlayer = ::openOwnTv) }
+        setContent { IptvPlayerShell(onOpenPlayer = ::openOwnTv, onPlayChannel = ::playChannel) }
     }
 
     private fun openOwnTv() {
         startActivity(Intent().setClassName(packageName, "tv.own.owntv.MainActivity"))
+    }
+
+    private fun playChannel(channel: ChannelEntity) {
+        startActivity(
+            Intent(this, tv.own.owntv.MainActivity::class.java).apply {
+                data = LauncherDeepLink.Live(
+                    sourceId = channel.sourceId,
+                    remoteId = channel.remoteId,
+                    name = channel.name,
+                    itemId = channel.id,
+                ).toUri()
+            },
+        )
     }
 }
 
@@ -76,7 +90,7 @@ private data class NavItem(val label: String, val icon: ImageVector)
 private data class ContentCard(val title: String, val subtitle: String, val accent: Color)
 
 @Composable
-private fun IptvPlayerShell(onOpenPlayer: () -> Unit) {
+private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit) {
     val vm: ProductHomeViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = listOf(
@@ -102,11 +116,11 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit) {
                 TopBar(state.profileName)
                 Spacer(Modifier.height(18.dp))
                 when (selected) {
-                    0 -> HomeContent(state, onOpenPlayer)
-                    1 -> LiveContent(state, onOpenPlayer)
+                    0 -> HomeContent(state, onOpenPlayer, onPlayChannel)
+                    1 -> LiveContent(state, onOpenPlayer, onPlayChannel)
                     2 -> CatalogSection("Movies", state.movieCount, Color(0xFF8B5CF6), onOpenPlayer)
                     3 -> CatalogSection("Series", state.seriesCount, Color(0xFF00A6A6), onOpenPlayer)
-                    4 -> FavoritesContent(state.favoriteChannels, onOpenPlayer)
+                    4 -> FavoritesContent(state.favoriteChannels, onOpenPlayer, onPlayChannel)
                     else -> SectionPlaceholder("Settings", onOpenPlayer)
                 }
             }
@@ -172,9 +186,24 @@ private fun TopBar(profileName: String) {
 }
 
 @Composable
-private fun HomeContent(state: ProductHomeState, onOpenPlayer: () -> Unit) {
+private fun HomeContent(
+    state: ProductHomeState,
+    onOpenPlayer: () -> Unit,
+    onPlayChannel: (ChannelEntity) -> Unit,
+) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         item { Hero(state, onOpenPlayer) }
+        item {
+            Text("Live now", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
+            if (state.channels.isEmpty()) {
+                Text("No channels indexed yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(state.channels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
+                }
+            }
+        }
         item {
             Text("Quick access", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
@@ -191,7 +220,7 @@ private fun HomeContent(state: ProductHomeState, onOpenPlayer: () -> Unit) {
                 Text("No live favorites yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
             } else {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onOpenPlayer) }
+                    items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
                 }
             }
         }
@@ -226,17 +255,37 @@ private fun Hero(state: ProductHomeState, onOpenPlayer: () -> Unit) {
 }
 
 @Composable
-private fun LiveContent(state: ProductHomeState, onOpenPlayer: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Live TV", fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        Text("${state.channelCount} channels", color = Color(0xFF9CA3AF))
-        if (state.favoriteChannels.isNotEmpty()) {
-            Text("Your favorites", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onOpenPlayer) }
+private fun LiveContent(
+    state: ProductHomeState,
+    onOpenPlayer: () -> Unit,
+    onPlayChannel: (ChannelEntity) -> Unit,
+) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        item {
+            Text("Live TV", fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text("${state.channelCount} channels", color = Color(0xFF9CA3AF))
+        }
+        if (state.channels.isNotEmpty()) {
+            item {
+                Text("All channels · preview", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(12.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(state.channels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
+                }
             }
         }
-        Button(onClick = onOpenPlayer) { Text("Open full Live TV catalog") }
+        item {
+            if (state.favoriteChannels.isNotEmpty()) {
+                Text("Favorites", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(12.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = onOpenPlayer) { Text("Open full Live TV catalog") }
+        }
     }
 }
 
@@ -250,14 +299,18 @@ private fun CatalogSection(title: String, count: Int, accent: Color, onOpenPlaye
 }
 
 @Composable
-private fun FavoritesContent(channels: List<ChannelEntity>, onOpenPlayer: () -> Unit) {
+private fun FavoritesContent(
+    channels: List<ChannelEntity>,
+    onOpenPlayer: () -> Unit,
+    onPlayChannel: (ChannelEntity) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Favorites", fontSize = 34.sp, fontWeight = FontWeight.Bold)
         if (channels.isEmpty()) {
             Text("No live favorites yet.", color = Color(0xFF9CA3AF))
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(channels, key = { it.id }) { channel -> ChannelCard(channel, onOpenPlayer) }
+                items(channels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
             }
         }
         Button(onClick = onOpenPlayer) { Text("Open full catalog") }
@@ -265,8 +318,8 @@ private fun FavoritesContent(channels: List<ChannelEntity>, onOpenPlayer: () -> 
 }
 
 @Composable
-private fun ChannelCard(channel: ChannelEntity, onOpenPlayer: () -> Unit) {
-    Card(onClick = onOpenPlayer, modifier = Modifier.width(300.dp).height(145.dp)) {
+private fun ChannelCard(channel: ChannelEntity, onPlay: (ChannelEntity) -> Unit) {
+    Card(onClick = { onPlay(channel) }, modifier = Modifier.width(300.dp).height(145.dp)) {
         Box(
             modifier = Modifier.fillMaxSize()
                 .background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C))))
