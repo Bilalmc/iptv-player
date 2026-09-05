@@ -48,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
 import androidx.tv.material3.Icon
@@ -77,7 +77,7 @@ private data class ContentCard(val title: String, val subtitle: String, val acce
 
 @Composable
 private fun IptvPlayerShell(onOpenPlayer: () -> Unit) {
-    val vm: ProductHomeViewModel = koinViewModel()
+    val vm: ProductHomeViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = listOf(
         NavItem("Home", Icons.Default.Home),
