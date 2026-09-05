@@ -24,5 +24,6 @@ subprojects {
                     .get()
             }
         }
+        dependencies.add("implementation", project(":product-ui"))
     }
 }
