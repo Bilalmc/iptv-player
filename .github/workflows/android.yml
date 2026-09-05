@@ -30,5 +30,27 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Build debug APK
+      - name: Build standard TV APK
         run: gradle :app:assembleStandardDebug --stacktrace
+        env:
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Build x86_64 emulator APK
+        run: gradle :app:assembleX86_64Debug --stacktrace
+        env:
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Run unit tests
+        run: gradle :app:testStandardDebugUnitTest --stacktrace
+        env:
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: iptv-player-debug-apks
+          path: upstream/OwnTV/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
