@@ -30,6 +30,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Build product UI library
+        run: gradle :product-ui:assembleDebug --stacktrace
+        env:
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
       - name: Build standard TV APK
         run: gradle :app:assembleStandardDebug --stacktrace
         env:
@@ -42,8 +48,14 @@ jobs:
           GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
 
-      - name: Run unit tests
+      - name: Run app unit tests
         run: gradle :app:testStandardDebugUnitTest --stacktrace
+        env:
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Run product UI unit tests
+        run: gradle :product-ui:testDebugUnitTest --stacktrace
         env:
           GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
