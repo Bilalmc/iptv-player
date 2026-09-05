@@ -47,11 +47,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.androidx.compose.koinViewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import tv.own.owntv.core.database.entity.ChannelEntity
 
 class IptvShellActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,6 +77,8 @@ private data class ContentCard(val title: String, val subtitle: String, val acce
 
 @Composable
 private fun IptvPlayerShell(onOpenPlayer: () -> Unit) {
+    val vm: ProductHomeViewModel = koinViewModel()
+    val state by vm.state.collectAsStateWithLifecycle()
     val nav = listOf(
         NavItem("Home", Icons.Default.Home),
         NavItem("Live TV", Icons.Default.LiveTv),
@@ -83,11 +88,6 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit) {
         NavItem("Settings", Icons.Default.Settings),
     )
     var selected by remember { mutableIntStateOf(0) }
-    val featured = listOf(
-        ContentCard("LIVE CHANNELS", "Start watching live television", Color(0xFF5B7CFF)),
-        ContentCard("MOVIES", "Your on-demand library", Color(0xFF8B5CF6)),
-        ContentCard("SERIES", "Continue your shows", Color(0xFF00A6A6)),
-    )
 
     MaterialTheme {
         Row(
@@ -99,11 +99,15 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit) {
             NavigationRail(nav, selected) { selected = it }
             Spacer(Modifier.width(30.dp))
             Column(modifier = Modifier.fillMaxSize()) {
-                TopBar()
+                TopBar(state.profileName)
                 Spacer(Modifier.height(18.dp))
                 when (selected) {
-                    0 -> HomeContent(featured, onOpenPlayer)
-                    else -> SectionPlaceholder(nav[selected].label, onOpenPlayer)
+                    0 -> HomeContent(state, onOpenPlayer)
+                    1 -> LiveContent(state, onOpenPlayer)
+                    2 -> CatalogSection("Movies", state.movieCount, Color(0xFF8B5CF6), onOpenPlayer)
+                    3 -> CatalogSection("Series", state.seriesCount, Color(0xFF00A6A6), onOpenPlayer)
+                    4 -> FavoritesContent(state.favoriteChannels, onOpenPlayer)
+                    else -> SectionPlaceholder("Settings", onOpenPlayer)
                 }
             }
         }
@@ -149,48 +153,53 @@ private fun FocusNavItem(item: NavItem, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun TopBar() {
+private fun TopBar(profileName: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column {
-            Text("Good evening", fontSize = 13.sp, color = Color(0xFF8B93A7))
+            Text("IPTV Player", fontSize = 13.sp, color = Color(0xFF8B93A7))
             Text("What do you want to watch?", fontSize = 25.sp, fontWeight = FontWeight.SemiBold)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFFB8BFCE))
             Spacer(Modifier.width(18.dp))
-            Text("Profile", fontSize = 13.sp, color = Color(0xFFB8BFCE))
+            Text(profileName, fontSize = 13.sp, color = Color(0xFFB8BFCE))
         }
     }
 }
 
 @Composable
-private fun HomeContent(featured: List<ContentCard>, onOpenPlayer: () -> Unit) {
+private fun HomeContent(state: ProductHomeState, onOpenPlayer: () -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        item { Hero(onOpenPlayer) }
+        item { Hero(state, onOpenPlayer) }
         item {
             Text("Quick access", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(featured) { card -> ContentCardView(card, onOpenPlayer) }
+                item { ContentCardView(ContentCard("LIVE TV", "${state.channelCount} channels", Color(0xFF5B7CFF)), onOpenPlayer) }
+                item { ContentCardView(ContentCard("MOVIES", "${state.movieCount} titles", Color(0xFF8B5CF6)), onOpenPlayer) }
+                item { ContentCardView(ContentCard("SERIES", "${state.seriesCount} series", Color(0xFF00A6A6)), onOpenPlayer) }
             }
         }
         item {
-            Text("Continue watching", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Favorites", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ContentCardView(ContentCard("LIVE", "Resume your last channel", Color(0xFF334155)), onOpenPlayer)
-                ContentCardView(ContentCard("RECENT", "Open your watch history", Color(0xFF334155)), onOpenPlayer)
+            if (state.favoriteChannels.isEmpty()) {
+                Text("No live favorites yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onOpenPlayer) }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Hero(onOpenPlayer: () -> Unit) {
+private fun Hero(state: ProductHomeState, onOpenPlayer: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -202,11 +211,73 @@ private fun Hero(onOpenPlayer: () -> Unit) {
         Column(modifier = Modifier.align(Alignment.CenterStart)) {
             Text("YOUR TV. YOUR WAY.", color = Color(0xFF7EA2FF), fontSize = 12.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text("Live TV made simple.", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Text(if (state.hasSources) "Live TV made simple." else "Connect your IPTV source.", fontSize = 32.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text("Fast navigation, EPG, VOD and a remote-first experience.", color = Color(0xFFB8BFCE), fontSize = 14.sp)
+            Text(
+                if (state.hasSources) "${state.channelCount} live channels · ${state.movieCount} movies · ${state.seriesCount} series"
+                else "Add an M3U, Xtream or Stalker source to start.",
+                color = Color(0xFFB8BFCE),
+                fontSize = 14.sp,
+            )
             Spacer(Modifier.height(18.dp))
-            Button(onClick = onOpenPlayer) { Text("Open player") }
+            Button(onClick = onOpenPlayer) { Text(if (state.hasSources) "Open Live TV" else "Add source") }
+        }
+    }
+}
+
+@Composable
+private fun LiveContent(state: ProductHomeState, onOpenPlayer: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Live TV", fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        Text("${state.channelCount} channels", color = Color(0xFF9CA3AF))
+        if (state.favoriteChannels.isNotEmpty()) {
+            Text("Your favorites", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onOpenPlayer) }
+            }
+        }
+        Button(onClick = onOpenPlayer) { Text("Open full Live TV catalog") }
+    }
+}
+
+@Composable
+private fun CatalogSection(title: String, count: Int, accent: Color, onOpenPlayer: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(title, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        Text("$count items indexed", color = Color(0xFF9CA3AF))
+        ContentCardView(ContentCard(title.uppercase(), "Open the complete catalog", accent), onOpenPlayer)
+    }
+}
+
+@Composable
+private fun FavoritesContent(channels: List<ChannelEntity>, onOpenPlayer: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Favorites", fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        if (channels.isEmpty()) {
+            Text("No live favorites yet.", color = Color(0xFF9CA3AF))
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(channels, key = { it.id }) { channel -> ChannelCard(channel, onOpenPlayer) }
+            }
+        }
+        Button(onClick = onOpenPlayer) { Text("Open full catalog") }
+    }
+}
+
+@Composable
+private fun ChannelCard(channel: ChannelEntity, onOpenPlayer: () -> Unit) {
+    Card(onClick = onOpenPlayer, modifier = Modifier.width(300.dp).height(145.dp)) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C))))
+                .padding(18.dp),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            Column {
+                Text(channel.number?.toString() ?: "LIVE", fontSize = 12.sp, color = Color(0xFFB8BFCE), fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(channel.name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -234,7 +305,7 @@ private fun SectionPlaceholder(title: String, onOpenPlayer: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Text(title, fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        Text("The full catalog and playback engine are provided by the integrated OwnTV core.", color = Color(0xFF9CA3AF))
+        Text("This section is backed by the integrated OwnTV catalog.", color = Color(0xFF9CA3AF))
         Spacer(Modifier.height(22.dp))
         Button(onClick = onOpenPlayer) { Text("Open catalog") }
     }
