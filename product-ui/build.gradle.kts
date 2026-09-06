@@ -36,8 +36,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.tv.material)
 
-    // Product UI reads the same Room/Settings state as the integrated OwnTV application.
-    implementation("tv.own.owntv:core:1.0.18")
+    // Keep the product pinned to the exact OwnTV_Core commit included as a submodule.
+    implementation("tv.own.owntv:core:1.0.17")
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
