@@ -27,38 +27,26 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android SDK platforms used by the pinned stack
+        run: sdkmanager "platforms;android-36" "platforms;android-37" "build-tools;36.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build product UI library
         run: gradle :product-ui:assembleDebug --stacktrace
-        env:
-          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
 
       - name: Build standard TV APK
         run: gradle :app:assembleStandardDebug --stacktrace
-        env:
-          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
 
       - name: Build x86_64 emulator APK
         run: gradle :app:assembleX86_64Debug --stacktrace
-        env:
-          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
 
       - name: Run app unit tests
         run: gradle :app:testStandardDebugUnitTest --stacktrace
-        env:
-          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
 
       - name: Run product UI unit tests
         run: gradle :product-ui:testDebugUnitTest --stacktrace
-        env:
-          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
