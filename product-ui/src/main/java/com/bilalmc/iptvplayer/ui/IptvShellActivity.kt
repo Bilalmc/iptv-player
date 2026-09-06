@@ -24,14 +24,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.onFocusChanged
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LiveTv
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.clip
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -190,23 +181,14 @@ private fun TopBar(profileName: String) {
 }
 
 @Composable
-private fun HomeContent(
-    state: ProductHomeState,
-    onOpenPlayer: () -> Unit,
-    onPlayChannel: (ChannelEntity) -> Unit,
-) {
+private fun HomeContent(state: ProductHomeState, onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         item { Hero(state, onOpenPlayer) }
         item {
             Text("Live now", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
-            if (state.channels.isEmpty()) {
-                Text("No channels indexed yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
-            } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.channels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
-                }
-            }
+            if (state.channels.isEmpty()) Text("No channels indexed yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
+            else LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) { items(state.channels, key = { it.id }) { ChannelCard(it, onPlayChannel) } }
         }
         item {
             Text("Quick access", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -220,13 +202,8 @@ private fun HomeContent(
         item {
             Text("Favorites", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(12.dp))
-            if (state.favoriteChannels.isEmpty()) {
-                Text("No live favorites yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
-            } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
-                }
-            }
+            if (state.favoriteChannels.isEmpty()) Text("No live favorites yet.", color = Color(0xFF9CA3AF), fontSize = 14.sp)
+            else LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) { items(state.favoriteChannels, key = { it.id }) { ChannelCard(it, onPlayChannel) } }
         }
     }
 }
@@ -234,24 +211,15 @@ private fun HomeContent(
 @Composable
 private fun Hero(state: ProductHomeState, onOpenPlayer: () -> Unit) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(250.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Brush.horizontalGradient(listOf(Color(0xFF10192D), Color(0xFF17131F), Color(0xFF0D0F15))))
-            .padding(30.dp),
+        modifier = Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(22.dp))
+            .background(Brush.horizontalGradient(listOf(Color(0xFF10192D), Color(0xFF17131F), Color(0xFF0D0F15)))).padding(30.dp),
     ) {
         Column(modifier = Modifier.align(Alignment.CenterStart)) {
             Text("YOUR TV. YOUR WAY.", color = Color(0xFF7EA2FF), fontSize = 12.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(if (state.hasSources) "Live TV made simple." else "Connect your IPTV source.", fontSize = 32.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text(
-                if (state.hasSources) "${state.channelCount} live channels · ${state.movieCount} movies · ${state.seriesCount} series"
-                else "Add an M3U, Xtream or Stalker source to start.",
-                color = Color(0xFFB8BFCE),
-                fontSize = 14.sp,
-            )
+            Text(if (state.hasSources) "${state.channelCount} live channels · ${state.movieCount} movies · ${state.seriesCount} series" else "Add an M3U, Xtream or Stalker source to start.", color = Color(0xFFB8BFCE), fontSize = 14.sp)
             Spacer(Modifier.height(18.dp))
             Button(onClick = onOpenPlayer) { Text(if (state.hasSources) "Open Live TV" else "Add source") }
         }
@@ -259,33 +227,23 @@ private fun Hero(state: ProductHomeState, onOpenPlayer: () -> Unit) {
 }
 
 @Composable
-private fun LiveContent(
-    state: ProductHomeState,
-    onOpenPlayer: () -> Unit,
-    onPlayChannel: (ChannelEntity) -> Unit,
-) {
+private fun LiveContent(state: ProductHomeState, onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         item {
             Text("Live TV", fontSize = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text("${state.channelCount} channels", color = Color(0xFF9CA3AF))
         }
-        if (state.channels.isNotEmpty()) {
-            item {
-                Text("All channels · preview", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.channels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
-                }
-            }
+        if (state.channels.isNotEmpty()) item {
+            Text("All channels · preview", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) { items(state.channels, key = { it.id }) { ChannelCard(it, onPlayChannel) } }
         }
         item {
             if (state.favoriteChannels.isNotEmpty()) {
                 Text("Favorites", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(12.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.favoriteChannels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
-                }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) { items(state.favoriteChannels, key = { it.id }) { ChannelCard(it, onPlayChannel) } }
             }
             Spacer(Modifier.height(8.dp))
             Button(onClick = onOpenPlayer) { Text("Open full Live TV catalog") }
@@ -303,20 +261,11 @@ private fun CatalogSection(title: String, count: Int, accent: Color, onOpenPlaye
 }
 
 @Composable
-private fun FavoritesContent(
-    channels: List<ChannelEntity>,
-    onOpenPlayer: () -> Unit,
-    onPlayChannel: (ChannelEntity) -> Unit,
-) {
+private fun FavoritesContent(channels: List<ChannelEntity>, onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Favorites", fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        if (channels.isEmpty()) {
-            Text("No live favorites yet.", color = Color(0xFF9CA3AF))
-        } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(channels, key = { it.id }) { channel -> ChannelCard(channel, onPlayChannel) }
-            }
-        }
+        if (channels.isEmpty()) Text("No live favorites yet.", color = Color(0xFF9CA3AF))
+        else LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) { items(channels, key = { it.id }) { ChannelCard(it, onPlayChannel) } }
         Button(onClick = onOpenPlayer) { Text("Open full catalog") }
     }
 }
@@ -324,12 +273,7 @@ private fun FavoritesContent(
 @Composable
 private fun ChannelCard(channel: ChannelEntity, onPlay: (ChannelEntity) -> Unit) {
     Card(onClick = { onPlay(channel) }, modifier = Modifier.width(300.dp).height(145.dp)) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C))))
-                .padding(18.dp),
-            contentAlignment = Alignment.BottomStart,
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
             Column {
                 Text(channel.number?.toString() ?: "LIVE", fontSize = 12.sp, color = Color(0xFFB8BFCE), fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
@@ -342,12 +286,7 @@ private fun ChannelCard(channel: ChannelEntity, onPlay: (ChannelEntity) -> Unit)
 @Composable
 private fun ContentCardView(card: ContentCard, onOpenPlayer: () -> Unit) {
     Card(onClick = onOpenPlayer, modifier = Modifier.width(300.dp).height(145.dp)) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .background(Brush.linearGradient(listOf(card.accent.copy(alpha = 0.75f), Color(0xFF11141C))))
-                .padding(18.dp),
-            contentAlignment = Alignment.BottomStart,
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(card.accent.copy(alpha = 0.75f), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
             Column {
                 Text(card.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(4.dp))
