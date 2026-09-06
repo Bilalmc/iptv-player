@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.onFocusChanged
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.clip
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -57,6 +59,8 @@ import androidx.tv.material3.Text
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.launcher.LauncherDeepLink
 
+private const val OWN_TV_MAIN_ACTIVITY = "tv.own.owntv.MainActivity"
+
 class IptvShellActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,12 +73,12 @@ class IptvShellActivity : ComponentActivity() {
     }
 
     private fun openOwnTv() {
-        startActivity(Intent().setClassName(packageName, "tv.own.owntv.MainActivity"))
+        startActivity(Intent().setClassName(packageName, OWN_TV_MAIN_ACTIVITY))
     }
 
     private fun playChannel(channel: ChannelEntity) {
         startActivity(
-            Intent(this, tv.own.owntv.MainActivity::class.java).apply {
+            Intent().setClassName(packageName, OWN_TV_MAIN_ACTIVITY).apply {
                 data = LauncherDeepLink.Live(
                     sourceId = channel.sourceId,
                     remoteId = channel.remoteId,
