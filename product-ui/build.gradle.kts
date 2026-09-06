@@ -36,6 +36,10 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.tv.material)
 
+    // Channel logos are part of the provider data model; render them directly in the product shell.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
     // Keep the product pinned to the exact OwnTV_Core commit included as a submodule.
     implementation("tv.own.owntv:core:1.0.17")
     implementation(platform(libs.koin.bom))
