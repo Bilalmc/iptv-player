@@ -6,8 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,7 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.clip
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -49,34 +49,31 @@ import androidx.tv.material3.Text
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.launcher.LauncherDeepLink
 
-private const val OWN_TV_MAIN_ACTIVITY = "tv.own.owntv.MainActivity"
+private const val OWN_TV_ACTIVITY = "tv.own.owntv.MainActivity"
 
 class IptvShellActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (intent?.data != null) {
-            openOwnTv()
+            openOwnTv(intent.data)
             finish()
             return
         }
-        setContent { IptvPlayerShell(onOpenPlayer = ::openOwnTv, onPlayChannel = ::playChannel) }
+        setContent { IptvPlayerShell(onOpenPlayer = { openOwnTv() }, onPlayChannel = ::playChannel) }
     }
 
-    private fun openOwnTv() {
-        startActivity(Intent().setClassName(packageName, OWN_TV_MAIN_ACTIVITY))
+    private fun openOwnTv(data: android.net.Uri? = null) {
+        startActivity(Intent().setClassName(packageName, OWN_TV_ACTIVITY).apply { this.data = data })
     }
 
     private fun playChannel(channel: ChannelEntity) {
-        startActivity(
-            Intent().setClassName(packageName, OWN_TV_MAIN_ACTIVITY).apply {
-                data = LauncherDeepLink.Live(
-                    sourceId = channel.sourceId,
-                    remoteId = channel.remoteId,
-                    name = channel.name,
-                    itemId = channel.id,
-                ).toUri()
-            },
-        )
+        val uri = LauncherDeepLink.Live(
+            sourceId = channel.sourceId,
+            remoteId = channel.remoteId,
+            name = channel.name,
+            itemId = channel.id,
+        ).toUri()
+        openOwnTv(uri)
     }
 }
 
@@ -88,22 +85,20 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
     val vm: ProductHomeViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = listOf(
-        NavItem("Home", Icons.Default.Home),
-        NavItem("Live TV", Icons.Default.LiveTv),
-        NavItem("Movies", Icons.Default.Movie),
-        NavItem("Series", Icons.Default.VideoLibrary),
-        NavItem("Favorites", Icons.Default.Favorite),
-        NavItem("Settings", Icons.Default.Settings),
+        NavItem("Home", androidx.compose.material.icons.Icons.Default.Home),
+        NavItem("Live TV", androidx.compose.material.icons.Icons.Default.LiveTv),
+        NavItem("Movies", androidx.compose.material.icons.Icons.Default.Movie),
+        NavItem("Series", androidx.compose.material.icons.Icons.Default.VideoLibrary),
+        NavItem("Favorites", androidx.compose.material.icons.Icons.Default.Favorite),
+        NavItem("Settings", androidx.compose.material.icons.Icons.Default.Settings),
     )
     var selected by remember { mutableIntStateOf(0) }
 
     MaterialTheme {
-        Row(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF08090D)).padding(32.dp),
-        ) {
+        Row(Modifier.fillMaxSize().background(Color(0xFF08090D)).padding(32.dp)) {
             NavigationRail(nav, selected) { selected = it }
             Spacer(Modifier.width(30.dp))
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
                 TopBar(state.profileName)
                 Spacer(Modifier.height(18.dp))
                 when (selected) {
@@ -121,11 +116,7 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
 
 @Composable
 private fun NavigationRail(items: List<NavItem>, selected: Int, onSelected: (Int) -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxHeight().width(150.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    Column(Modifier.fillMaxHeight().width(150.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("IPTV", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Text("PLAYER", fontSize = 11.sp, letterSpacing = 2.sp, color = Color(0xFF8B93A7))
         Spacer(Modifier.height(28.dp))
@@ -140,14 +131,10 @@ private fun NavigationRail(items: List<NavItem>, selected: Int, onSelected: (Int
 private fun FocusNavItem(item: NavItem, selected: Boolean, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
             .background(if (selected) Color(0xFF1C294D) else Color.Transparent)
             .border(2.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .focusable()
-            .clickable(onClick = onClick)
+            .onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -159,17 +146,13 @@ private fun FocusNavItem(item: NavItem, selected: Boolean, onClick: () -> Unit) 
 
 @Composable
 private fun TopBar(profileName: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Column {
             Text("IPTV Player", fontSize = 13.sp, color = Color(0xFF8B93A7))
             Text("What do you want to watch?", fontSize = 25.sp, fontWeight = FontWeight.SemiBold)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFFB8BFCE))
+            Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "Search", tint = Color(0xFFB8BFCE))
             Spacer(Modifier.width(18.dp))
             Text(profileName, fontSize = 13.sp, color = Color(0xFFB8BFCE))
         }
@@ -206,11 +189,10 @@ private fun HomeContent(state: ProductHomeState, onOpenPlayer: () -> Unit, onPla
 
 @Composable
 private fun Hero(state: ProductHomeState, onOpenPlayer: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(22.dp))
-            .background(Brush.horizontalGradient(listOf(Color(0xFF10192D), Color(0xFF17131F), Color(0xFF0D0F15)))).padding(30.dp),
-    ) {
-        Column(modifier = Modifier.align(Alignment.CenterStart)) {
+    Box(Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(22.dp))
+        .background(Brush.horizontalGradient(listOf(Color(0xFF10192D), Color(0xFF17131F), Color(0xFF0D0F15))))
+        .padding(30.dp)) {
+        Column(Modifier.align(Alignment.CenterStart)) {
             Text("YOUR TV. YOUR WAY.", color = Color(0xFF7EA2FF), fontSize = 12.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(if (state.hasSources) "Live TV made simple." else "Connect your IPTV source.", fontSize = 32.sp, fontWeight = FontWeight.Bold)
@@ -269,7 +251,7 @@ private fun FavoritesContent(channels: List<ChannelEntity>, onOpenPlayer: () -> 
 @Composable
 private fun ChannelCard(channel: ChannelEntity, onPlay: (ChannelEntity) -> Unit) {
     Card(onClick = { onPlay(channel) }, modifier = Modifier.width(300.dp).height(145.dp)) {
-        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
+        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
             Column {
                 Text(channel.number?.toString() ?: "LIVE", fontSize = 12.sp, color = Color(0xFFB8BFCE), fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
@@ -282,7 +264,7 @@ private fun ChannelCard(channel: ChannelEntity, onPlay: (ChannelEntity) -> Unit)
 @Composable
 private fun ContentCardView(card: ContentCard, onOpenPlayer: () -> Unit) {
     Card(onClick = onOpenPlayer, modifier = Modifier.width(300.dp).height(145.dp)) {
-        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(card.accent.copy(alpha = 0.75f), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
+        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(card.accent.copy(alpha = 0.75f), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
             Column {
                 Text(card.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(4.dp))
@@ -294,7 +276,7 @@ private fun ContentCardView(card: ContentCard, onOpenPlayer: () -> Unit) {
 
 @Composable
 private fun SectionPlaceholder(title: String, onOpenPlayer: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Text(title, fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text("This section is backed by the integrated OwnTV catalog.", color = Color(0xFF9CA3AF))

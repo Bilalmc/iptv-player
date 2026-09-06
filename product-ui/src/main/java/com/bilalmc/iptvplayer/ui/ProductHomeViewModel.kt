@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import tv.own.owntv.core.database.dao.ChannelDao
@@ -22,7 +21,7 @@ import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.settings.SettingsRepository
 
-/** Product-owned presentation state backed directly by the shared OwnTV_Core database. */
+/** Product-facing projection of the shared OwnTV catalog. */
 data class ProductHomeState(
     val profileName: String = "Profile",
     val channelCount: Int = 0,
@@ -54,9 +53,7 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
                         }
                     } else {
                         val sourceIds = sources.map { it.id }
-                        val channelsFlow = flow {
-                            emit(channelDao.snapshotAll(sourceIds, 48))
-                        }
+                        val channelsFlow = flow { emit(channelDao.snapshotAll(sourceIds, 64)) }
                         combine(
                             profileFlow,
                             channelDao.countAll(sourceIds),
@@ -70,7 +67,7 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
                                 channelCount = channelCount,
                                 movieCount = movieCount,
                                 seriesCount = seriesCount,
-                                favoriteChannels = favorites.filter { it.sourceId in sourceIds }.take(12),
+                                favoriteChannels = favorites.filter { it.sourceId in sourceIds }.take(16),
                                 channels = channels,
                                 hasSources = true,
                             )
@@ -81,13 +78,5 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductHomeState())
 
-    fun refreshPreviewChannels() {
-        viewModelScope.launch {
-            val profileId = settings.activeProfileId.first()
-            if (profileId < 0L) return@launch
-            val sourceIds = sourceDao.sourceIdsForProfile(profileId)
-            if (sourceIds.isEmpty()) return@launch
-            channelDao.snapshotAll(sourceIds, 48)
-        }
-    }
+    suspend fun currentProfileId(): Long = settings.activeProfileId.first()
 }

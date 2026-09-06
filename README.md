@@ -1,40 +1,48 @@
 # IPTV Player
 
-Android-TV-IPTV-Player mit eigener Produktidentität auf Basis der Open-Source-OwnTV-Engine.
+XCIPTV-inspired Android TV IPTV player built on the pinned OwnTV open-source stack.
 
-## Produktziel
+## Product status
 
-Eine moderne, fernbedienungsoptimierte IPTV-App mit einer **XCIPTV-inspirierten Informationsarchitektur**: dunkle Oberfläche, große Content-Karten, Live-TV als primärer Einstieg, EPG/Guide, VOD, Serien, Favoriten, Suche und Einstellungen.
+The product shell is now separated from the upstream implementation. `product-ui` owns the branded TV navigation and home experience, while the pinned OwnTV app remains the playback/data engine.
 
-Das Projekt übernimmt die vorhandene Streaming-Infrastruktur statt sie neu zu implementieren. OwnTV bringt Xtream, M3U und Stalker-Portale, EPG, Catch-up, Profile, Downloads sowie Compose for TV und ExoPlayer/mpv mit.
+Current product surface:
+- Android TV / Google TV, D-pad-first UI
+- Home, Live TV, Movies, Series, Favorites and Settings sections
+- Live channel previews sourced from OwnTV Core
+- Live channel playback through OwnTV launcher deep links
+- Existing OwnTV support for M3U, Xtream, Stalker/MAC, EPG/XMLTV, catch-up, VOD, subtitles and DRM
+- Shared Room catalog and active-profile state through OwnTV Core
 
-## Aktueller Stand
+## Upstream pins
 
-- Produktname: **IPTV Player**
-- Application ID: `com.bilalmc.iptvplayer`
-- Produktversion: `0.1.0`
-- OwnTV: v4.1.7, reproduzierbar gepinnt
-- OwnTV_Core: reproduzierbar gepinnt
-- Android TV / D-pad-first
-- Eigener Produkt-Launcher und eigene Compose-for-TV-Shell
-- Home-Shell liest Profil, Playlist-Zuordnung, Live-/Movie-/Series-Anzahlen und Live-Favoriten direkt aus OwnTV_Core
-- Standard- und x86_64-Builds in CI
-- Unit-Tests in CI
+- OwnTV: `f17cffb7bc7118675e09c64e02a427d84902f6b3` (v4.1.7)
+- OwnTV_Core: `45c1e82c87a2bd2cda27d4d7e78b1cdfc1de2971`
 
-Die UI wird jetzt schrittweise von einer reinen Shell zu einer echten produkt-eigenen Oberfläche migriert. Der erste Datenpfad ist bereits produktseitig umgesetzt: `product-ui` verwendet die veröffentlichte `tv.own.owntv:core`-API, Koin und die vorhandenen Room-DAOs. Dadurch bleiben Profile, Quellen, Favoriten und Katalogzahlen mit dem bestehenden OwnTV-Datenbestand synchron.
+## Build
 
-Als nächste UI-Stufe folgen echte Live-/EPG-Raster, VOD-/Serien-Raster, Suche und der produkt-eigene Player-HUD. Der vorhandene OwnTV-Player bleibt dabei zunächst die Playback-Engine.
+The repository includes the upstream repositories as git submodules. Clone with recursive submodules enabled.
 
-## Entwicklung
+The product UI consumes the published OwnTV Core artifact. A local Core checkout can be used with `owntv.corePath` in `gradle.properties`.
+
+Build the product UI:
 
 ```bash
-git clone --recurse-submodules https://github.com/Bilalmc/iptv-player.git
-cd iptv-player
-git submodule update --init --recursive
+gradle :product-ui:assembleDebug
 ```
 
-Für eine lokale Entwicklung gegen einen ausgecheckten OwnTV_Core-Stand kann `owntv.corePath` in der lokalen Gradle-Konfiguration gesetzt werden. Zugangsdaten gehören nicht ins Repository.
+Build the standard TV APK:
 
-## Rechtliches
+```bash
+gradle :app:assembleStandardDebug
+```
 
-OwnTV und die übernommenen Komponenten stehen unter GPLv3. Änderungen und Weitergabe müssen die jeweiligen Lizenz- und Urheberrechtshinweise erhalten. Die App enthält keine IPTV-Inhalte, Senderabonnements oder Zugangsdaten; Nutzer müssen eigene, rechtmäßig zugängliche Quellen verwenden.
+Build the x86_64 emulator APK:
+
+```bash
+gradle :app:assembleX86_64Debug
+```
+
+## Licensing
+
+OwnTV is GPLv3. This product remains GPLv3-compatible and is intended for users' own legally accessible IPTV sources.
