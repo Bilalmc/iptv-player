@@ -2,9 +2,15 @@ package com.bilalmc.iptvplayer.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -19,6 +25,8 @@ import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SeriesDao
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.ChannelEntity
+import tv.own.owntv.core.database.entity.MovieEntity
+import tv.own.owntv.core.database.entity.SeriesEntity
 import tv.own.owntv.core.settings.SettingsRepository
 
 /** Product-facing projection of the shared OwnTV catalog. */
@@ -39,6 +47,27 @@ class ProductHomeViewModel : ViewModel(), KoinComponent {
     private val channelDao: ChannelDao by inject()
     private val movieDao: MovieDao by inject()
     private val seriesDao: SeriesDao by inject()
+
+    private val sourceIds: Flow<List<Long>> = settings.activeProfileId
+        .flatMapLatest { profileId ->
+            if (profileId < 0L) flowOf(emptyList())
+            else sourceDao.observeForProfile(profileId).map { sources -> sources.map { it.id } }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val movies: Flow<PagingData<MovieEntity>> = sourceIds.flatMapLatest { ids ->
+        if (ids.isEmpty()) flowOf(PagingData.empty())
+        else Pager(PagingConfig(pageSize = 24, prefetchDistance = 8, enablePlaceholders = false)) {
+            movieDao.pagingAllOriginal(ids)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    val series: Flow<PagingData<SeriesEntity>> = sourceIds.flatMapLatest { ids ->
+        if (ids.isEmpty()) flowOf(PagingData.empty())
+        else Pager(PagingConfig(pageSize = 24, prefetchDistance = 8, enablePlaceholders = false)) {
+            seriesDao.pagingAllOriginal(ids)
+        }.flow
+    }.cachedIn(viewModelScope)
 
     val state: StateFlow<ProductHomeState> = settings.activeProfileId
         .flatMapLatest { profileId ->
