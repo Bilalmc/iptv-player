@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.onFocusChanged
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -100,10 +99,7 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
 
     MaterialTheme {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF08090D))
-                .padding(32.dp),
+            modifier = Modifier.fillMaxSize().background(Color(0xFF08090D)).padding(32.dp),
         ) {
             NavigationRail(nav, selected) { selected = it }
             Spacer(Modifier.width(30.dp))
