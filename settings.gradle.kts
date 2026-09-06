@@ -1,3 +1,5 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
 pluginManagement {
     repositories {
         google()
@@ -44,6 +46,11 @@ val baselineDir = file("upstream/OwnTV/baselineprofile")
 if (baselineDir.isDirectory) {
     include(":baselineprofile")
     project(":baselineprofile").projectDir = baselineDir
+}
+
+val localCore = file("upstream/OwnTV_Core")
+if (localCore.isDirectory) {
+    includeBuild(localCore)
 }
 
 providers.gradleProperty("owntv.corePath").orNull
