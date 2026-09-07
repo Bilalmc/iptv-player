@@ -43,6 +43,8 @@ Build the x86_64 emulator APK:
 gradle :app:assembleX86_64Debug
 ```
 
+CI verification is configured on pushes to `feature/full-product-takeover` and `owntv-base` and runs the standard/x86_64 debug builds plus the standard debug unit tests.
+
 ## Licensing
 
 OwnTV is GPLv3. This product remains GPLv3-compatible and is intended for users' own legally accessible IPTV sources.
