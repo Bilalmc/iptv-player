@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.tv.material)
+    implementation(libs.androidx.paging.compose)
 
     // Channel logos are part of the provider data model; render them directly in the product shell.
     implementation(libs.coil.compose)
