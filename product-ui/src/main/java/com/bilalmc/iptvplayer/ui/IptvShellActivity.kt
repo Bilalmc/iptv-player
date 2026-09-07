@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -49,7 +48,7 @@ class IptvShellActivity : ComponentActivity() {
             finish()
             return
         }
-        setContent { IptvPlayerShell(::openOwnTv, ::playChannel) }
+        setContent { IptvPlayerShell(::openOwnTv, ::playChannel, ::playMovie) }
     }
 
     private fun openOwnTv(data: android.net.Uri? = null) {
@@ -59,12 +58,20 @@ class IptvShellActivity : ComponentActivity() {
     private fun playChannel(channel: ChannelEntity) {
         openOwnTv(LauncherDeepLink.Live(channel.sourceId, channel.remoteId, channel.name, channel.id).toUri())
     }
+
+    private fun playMovie(movie: MovieEntity) {
+        openOwnTv(LauncherDeepLink.Movie(movie.sourceId, movie.remoteId, movie.name, movie.id).toUri())
+    }
+
+    private fun playSeries(series: SeriesEntity) {
+        openOwnTv(LauncherDeepLink.Series(series.sourceId, series.remoteId, series.name, series.id).toUri())
+    }
 }
 
 private data class NavItem(val label: String, val icon: ImageVector)
 
 @Composable
-private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit) {
+private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit, onPlayMovie: (MovieEntity) -> Unit) {
     val vm: ProductHomeViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = listOf(
@@ -86,8 +93,8 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
                 when (selected) {
                     0 -> HomeContent(state, onOpenPlayer, onPlayChannel)
                     1 -> LiveContent(state, onOpenPlayer, onPlayChannel)
-                    2 -> MovieCatalog(vm)
-                    3 -> SeriesCatalog(vm)
+                    2 -> MovieCatalog(vm, onPlayMovie)
+                    3 -> SeriesCatalog(vm, onOpenPlayer)
                     4 -> FavoritesContent(state.favoriteChannels, onOpenPlayer, onPlayChannel)
                     else -> SectionPlaceholder("Settings", onOpenPlayer)
                 }
@@ -141,9 +148,9 @@ private fun HomeContent(state: ProductHomeState, onOpenPlayer: () -> Unit, onPla
         item {
             SectionTitle("Quick access")
             LazyRow(Modifier.focusGroup(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                item { ContentCardView("LIVE TV", "${state.channelCount} channels", Color(0xFF5B7CFF), onOpenPlayer) }
-                item { ContentCardView("MOVIES", "${state.movieCount} titles", Color(0xFF8B5CF6), onOpenPlayer) }
-                item { ContentCardView("SERIES", "${state.seriesCount} series", Color(0xFF00A6A6), onOpenPlayer) }
+                item { ContentCardView("LIVE TV", "${state.channelCount} channels", onOpenPlayer) }
+                item { ContentCardView("MOVIES", "${state.movieCount} titles", onOpenPlayer) }
+                item { ContentCardView("SERIES", "${state.seriesCount} series", onOpenPlayer) }
             }
         }
         item { SectionTitle("Favorites"); if (state.favoriteChannels.isEmpty()) EmptyText("No live favorites yet.") else ChannelRow(state.favoriteChannels, onPlayChannel) }
@@ -172,39 +179,39 @@ private fun LiveContent(state: ProductHomeState, onOpenPlayer: () -> Unit, onPla
 }
 
 @Composable
-private fun MovieCatalog(vm: ProductHomeViewModel) {
+private fun MovieCatalog(vm: ProductHomeViewModel, onPlayMovie: (MovieEntity) -> Unit) {
     val items = vm.movies.collectAsLazyPagingItems()
     Column(Modifier.fillMaxSize()) {
         Text("Movies", fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Text("Browse your movie library", color = Color(0xFF9CA3AF), modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
         LazyVerticalGrid(columns = GridCells.Fixed(5), contentPadding = PaddingValues(bottom = 32.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize().focusGroup()) {
-            items(items.itemCount) { index -> items[index]?.let { MovieCard(it) } }
+            items(items.itemCount) { index -> items[index]?.let { MovieCard(it, onPlayMovie) } }
         }
     }
 }
 
 @Composable
-private fun SeriesCatalog(vm: ProductHomeViewModel) {
+private fun SeriesCatalog(vm: ProductHomeViewModel, onOpenPlayer: () -> Unit) {
     val items = vm.series.collectAsLazyPagingItems()
     Column(Modifier.fillMaxSize()) {
         Text("Series", fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Text("Browse your series library", color = Color(0xFF9CA3AF), modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
         LazyVerticalGrid(columns = GridCells.Fixed(5), contentPadding = PaddingValues(bottom = 32.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize().focusGroup()) {
-            items(items.itemCount) { index -> items[index]?.let { SeriesCard(it) } }
+            items(items.itemCount) { index -> items[index]?.let { SeriesCard(it, onOpenPlayer) } }
         }
     }
 }
 
 @Composable
-private fun MovieCard(movie: MovieEntity) {
-    Card(onClick = { /* Detail/player routing is delegated to the OwnTV catalog in the next navigation pass. */ }, modifier = Modifier.width(180.dp).height(250.dp)) {
+private fun MovieCard(movie: MovieEntity, onPlay: (MovieEntity) -> Unit) {
+    Card(onClick = { onPlay(movie) }, modifier = Modifier.width(180.dp).height(250.dp)) {
         PosterCard(movie.posterUrl, movie.name, movie.year?.toString(), movie.rating?.let { "★ %.1f".format(it) })
     }
 }
 
 @Composable
-private fun SeriesCard(series: SeriesEntity) {
-    Card(onClick = { /* Detail/player routing is delegated to the OwnTV catalog in the next navigation pass. */ }, modifier = Modifier.width(180.dp).height(250.dp)) {
+private fun SeriesCard(series: SeriesEntity, onOpenPlayer: () -> Unit) {
+    Card(onClick = onOpenPlayer, modifier = Modifier.width(180.dp).height(250.dp)) {
         PosterCard(series.posterUrl, series.name, series.year?.toString(), series.rating?.let { "★ %.1f".format(it) })
     }
 }
@@ -247,9 +254,9 @@ private fun ChannelCard(channel: ChannelEntity, onPlay: (ChannelEntity) -> Unit)
 }
 
 @Composable
-private fun ContentCardView(title: String, subtitle: String, accent: Color, onOpenPlayer: () -> Unit) {
+private fun ContentCardView(title: String, subtitle: String, onOpenPlayer: () -> Unit) {
     Card(onClick = onOpenPlayer, modifier = Modifier.width(300.dp).height(145.dp)) {
-        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accent.copy(alpha = 0.75f), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
+        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF263B6B), Color(0xFF11141C)))).padding(18.dp), contentAlignment = Alignment.BottomStart) {
             Column { Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp); Spacer(Modifier.height(4.dp)); Text(subtitle, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
         }
     }
