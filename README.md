@@ -43,7 +43,7 @@ Build the x86_64 emulator APK:
 gradle :app:assembleX86_64Debug
 ```
 
-CI verification is configured on pushes to `feature/full-product-takeover` and `owntv-base` and runs the standard/x86_64 debug builds plus the standard debug unit tests.
+CI verification runs on the default branch and on `feature/full-product-takeover` / `owntv-base`, including pull requests targeting `main`.
 
 ## Licensing
 
