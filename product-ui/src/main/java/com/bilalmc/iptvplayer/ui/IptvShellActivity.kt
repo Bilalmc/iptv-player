@@ -3,6 +3,7 @@ package com.bilalmc.iptvplayer.ui
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,8 +62,9 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
     val homeVm: ProductHomeViewModel = viewModel()
     val catalogVm: ProductCatalogViewModel = viewModel()
     val state by homeVm.state.collectAsStateWithLifecycle()
-    var selected by remember { mutableIntStateOf(0) }
-    var seriesDetail by remember { mutableStateOf(false) }
+    var selected by rememberSaveable { mutableIntStateOf(0) }
+    var seriesDetail by rememberSaveable { mutableStateOf(false) }
+    val navFocusRequester = remember { FocusRequester() }
     val nav = listOf(
         NavItem("Home", androidx.compose.material.icons.Icons.Default.Home),
         NavItem("Live TV", androidx.compose.material.icons.Icons.Default.LiveTv),
@@ -71,13 +75,30 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
         NavItem("Favorites", androidx.compose.material.icons.Icons.Default.Favorite),
         NavItem("Settings", androidx.compose.material.icons.Icons.Default.Settings),
     )
+
+    BackHandler {
+        when {
+            seriesDetail -> seriesDetail = false
+            selected != 0 -> selected = 0
+            else -> return@BackHandler
+        }
+    }
+
+    LaunchedEffect(Unit) { navFocusRequester.requestFocus() }
+
     MaterialTheme {
         Row(Modifier.fillMaxSize().background(Color(0xFF08090D)).padding(28.dp)) {
             Column(Modifier.fillMaxHeight().width(152.dp).focusGroup(), verticalArrangement = Arrangement.Center) {
                 Text("IPTV", fontSize = 25.sp, fontWeight = FontWeight.Bold)
                 Text("PLAYER", fontSize = 11.sp, color = Color(0xFF8B93A7), letterSpacing = 2.sp)
                 Spacer(Modifier.height(24.dp))
-                nav.forEachIndexed { i, item -> NavButton(item, i == selected) { selected = i; seriesDetail = false }; Spacer(Modifier.height(7.dp)) }
+                nav.forEachIndexed { i, item ->
+                    NavButton(item, i == selected, Modifier.then(if (i == 0) Modifier.focusRequester(navFocusRequester) else Modifier)) {
+                        selected = i
+                        seriesDetail = false
+                    }
+                    Spacer(Modifier.height(7.dp))
+                }
             }
             Spacer(Modifier.width(28.dp))
             Column(Modifier.fillMaxSize()) {
@@ -102,9 +123,9 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
     }
 }
 
-@Composable private fun NavButton(item: NavItem, selected: Boolean, onClick: () -> Unit) {
+@Composable private fun NavButton(item: NavItem, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) Color(0xFF1C294D) else Color.Transparent).border(2.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(12.dp)).onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (selected) Color(0xFF1C294D) else Color.Transparent).border(2.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(12.dp)).onFocusChanged { focused = it.isFocused }.focusable().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(item.icon, item.label, tint = if (selected) Color.White else Color(0xFF8B93A7)); Spacer(Modifier.width(9.dp)); Text(item.label, fontSize = 12.sp)
     }
 }
