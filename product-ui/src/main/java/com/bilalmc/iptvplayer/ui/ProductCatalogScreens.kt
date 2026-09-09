@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,7 +83,13 @@ fun ProductSeriesDetail(vm: ProductCatalogViewModel, onBack: () -> Unit, onPlayE
     Column(Modifier.fillMaxSize().padding(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { FocusIconButton("Back", Icons.Default.ArrowBack) { vm.closeSeries(); onBack() }; Spacer(Modifier.width(18.dp)); Column { Text(series!!.name, fontSize = 30.sp, fontWeight = FontWeight.Bold); Text("${seasons.size} seasons · ${episodes.size} episodes", color = muted, fontSize = 13.sp) } }
         Spacer(Modifier.height(18.dp))
-        if (seasons.isNotEmpty()) { Text("Seasons", fontSize = 20.sp, fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); LazyRow(Modifier.focusGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(seasons, key = { it.id }) { season -> Button(onClick = { vm.selectSeason(season) }) { Text(if (season.name.isNullOrBlank()) "Season ${season.seasonNumber}" else season.name!!) } } } }
+        if (seasons.isNotEmpty()) {
+            Text("Seasons", fontSize = 20.sp, fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp))
+            LazyRow(Modifier.focusGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                item { Button(onClick = { vm.selectSeason(null) }) { Text("All seasons") } }
+                items(seasons, key = { it.id }) { season -> Button(onClick = { vm.selectSeason(season) }) { Text(if (season.name.isNullOrBlank()) "Season ${season.seasonNumber}" else season.name!!) } }
+            }
+        }
         Spacer(Modifier.height(18.dp)); Text(if (selectedSeasonId == null) "All episodes" else "Episodes", fontSize = 20.sp, fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp))
         if (episodes.isEmpty()) Text("Episodes are loading or this series has no episodes yet.", color = muted) else LazyColumn(Modifier.fillMaxSize().focusGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) { items(episodes, key = { it.id }) { episode -> EpisodeRow(episode) { onPlayEpisode(episode, series!!) } } }
     }
@@ -93,10 +100,15 @@ fun ProductSeriesDetail(vm: ProductCatalogViewModel, onBack: () -> Unit, onPlayE
 @Composable
 fun ProductEpgScreen(vm: ProductCatalogViewModel, onBack: () -> Unit, onPlayChannel: (ChannelEntity) -> Unit) {
     val rows by vm.epgRows.collectAsStateWithLifecycleCompat()
+    val refreshing by vm.epgRefreshing.collectAsStateWithLifecycleCompat()
+    LaunchedEffect(Unit) { vm.refreshEpg() }
     Column(Modifier.fillMaxSize().padding(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { FocusIconButton("Back", Icons.Default.ArrowBack, onBack); Spacer(Modifier.width(18.dp)); Column { Text("TV Guide", fontSize = 32.sp, fontWeight = FontWeight.Bold); Text("Now & next · ${rows.count { it.now != null }} channels with live programme data", color = muted, fontSize = 13.sp) } }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FocusIconButton("Back", Icons.Default.ArrowBack, onBack); Spacer(Modifier.width(18.dp)); Column(Modifier.weight(1f)) { Text("TV Guide", fontSize = 32.sp, fontWeight = FontWeight.Bold); Text("Now & next · ${rows.count { it.now != null }} channels with live programme data", color = muted, fontSize = 13.sp) }
+            Button(onClick = { vm.refreshEpg() }, enabled = !refreshing) { Icon(Icons.Default.Refresh, "Refresh"); Spacer(Modifier.width(8.dp)); Text(if (refreshing) "Refreshing…" else "Refresh EPG") }
+        }
         Spacer(Modifier.height(20.dp))
-        if (rows.isEmpty()) { Text("No EPG data available for the active channels yet.", color = muted, fontSize = 18.sp); Text("The guide populates after the source's XMLTV/EPG feed is synchronized.", color = muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
+        if (rows.isEmpty()) { Text(if (refreshing) "Synchronizing EPG data…" else "No EPG data available for the active channels yet.", color = muted, fontSize = 18.sp); Text("The guide reads XMLTV/EPG data matched to your active channels.", color = muted, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
         else LazyColumn(Modifier.fillMaxSize().focusGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) { items(rows, key = { it.channel.id }) { row -> EpgRow(row, onPlayChannel) } }
     }
 }
