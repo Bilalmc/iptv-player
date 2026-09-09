@@ -1,5 +1,8 @@
 plugins {
-    alias(libs.plugins.android.library)
+    // The root build already resolves the pinned Android Gradle Plugin.
+    // Use the plugin id directly here because the imported OwnTV catalog does not expose
+    // an android.library accessor in the product build's generated version-catalog API.
+    id("com.android.library")
     alias(libs.plugins.compose.compiler)
 }
 
