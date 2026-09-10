@@ -15,8 +15,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
-      GPR_USER: ${{ secrets.GPR_USER }}
+      GPR_TOKEN: ${{ secrets.GPR_TOKEN || github.token }}
+      GPR_USER: ${{ secrets.GPR_USER || github.actor }}
     steps:
       - name: Checkout product repository
         uses: actions/checkout@v5
@@ -27,16 +27,13 @@ jobs:
           git -C upstream/OwnTV fetch --depth 1 origin f17cffb7bc7118675e09c64e02a427d84902f6b3
           git -C upstream/OwnTV checkout --detach f17cffb7bc7118675e09c64e02a427d84902f6b3
 
-      - name: Validate OwnTV_Core package credentials
+      - name: Check OwnTV_Core package credentials
         run: |
-          if [ -z "$GPR_TOKEN" ]; then
-            echo "GPR_TOKEN repository secret is required to resolve the private OwnTV_Core package."
+          if [ -z "$GPR_TOKEN" ] || [ -z "$GPR_USER" ]; then
+            echo "No GitHub Packages credentials are available."
             exit 1
           fi
-          if [ -z "$GPR_USER" ]; then
-            echo "GPR_USER repository secret is required for the OwnTV_Core GitHub Packages registry."
-            exit 1
-          fi
+          echo "GitHub Packages credentials are configured."
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
