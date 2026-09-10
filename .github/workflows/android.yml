@@ -43,12 +43,12 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK platforms used by the pinned stack
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: "9.5.0"
+          gradle-version: "9.4.1"
 
       - name: Build product UI library
         run: gradle :product-ui:assembleDebug --stacktrace
