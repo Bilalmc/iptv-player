@@ -22,6 +22,7 @@ dependencyResolutionManagement {
             url = uri("https://maven.pkg.github.com/ahXN00/OwnTV_Core")
             credentials {
                 username = providers.gradleProperty("gpr.user")
+                    .orElse(providers.environmentVariable("GPR_USER"))
                     .orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
                 password = providers.gradleProperty("gpr.token")
                     .orElse(providers.environmentVariable("GPR_TOKEN")).orNull
