@@ -14,9 +14,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     env:
       GPR_TOKEN: ${{ secrets.GPR_TOKEN || github.token }}
       GPR_USER: ${{ secrets.GPR_USER || github.actor }}
+
     steps:
       - name: Checkout product repository
         uses: actions/checkout@v5
@@ -50,7 +52,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: "9.4.1"
+          gradle-version: "9.5.0"
 
       - name: Build product UI library
         run: gradle :product-ui:assembleDebug --stacktrace
@@ -70,6 +72,7 @@ jobs:
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: iptv-player-debug-apks
-          path: upstream/OwnTV/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          name: android-build-artifacts
+          path: |
+            app/build/outputs/**/*.apk
+            product-ui/build/outputs/**/*.aar
