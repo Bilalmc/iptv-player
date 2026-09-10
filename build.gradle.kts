@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.LibraryExtension
 
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -13,6 +14,10 @@ plugins {
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<ApplicationExtension> {
+            // OwnTV's pinned dependency stack now requires API 37 at compile time. Keep the
+            // runtime target at the upstream value (36) while compiling the whole product against 37.
+            compileSdk = 37
+
             defaultConfig {
                 applicationId = providers.gradleProperty("product.applicationId")
                     .orElse("com.bilalmc.iptvplayer")
@@ -31,5 +36,11 @@ subprojects {
         }
 
         dependencies.add("implementation", project(":product-ui"))
+    }
+
+    plugins.withId("com.android.library") {
+        extensions.configure<LibraryExtension> {
+            compileSdk = 37
+        }
     }
 }
