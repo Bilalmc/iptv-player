@@ -43,7 +43,12 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK platforms used by the pinned stack
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+
+      - name: Verify Android SDK 37 installation
+        run: |
+          test -f "$ANDROID_SDK_ROOT/platforms/android-37/android.jar"
+          test -d "$ANDROID_SDK_ROOT/build-tools/37.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
