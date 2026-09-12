@@ -3,22 +3,24 @@ name: Android
 on:
   workflow_dispatch:
   push:
-    branches: ["main", "owntv-base", "feature/full-product-takeover"]
+    branches: ["main", "owntv-base", "feature/full-product-takeover", "ci/final-build-validation"]
   pull_request:
-    branches: ["main", "owntv-base", "feature/full-product-takeover"]
+    branches: ["main", "owntv-base", "feature/full-product-takeover", "ci/final-build-validation"]
 
 permissions:
   contents: read
   packages: read
 
+env:
+  ANDROID_COMPILE_SDK: "37"
+  ANDROID_BUILD_TOOLS: "37.0.0"
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
-      GPR_TOKEN: ${{ secrets.GPR_TOKEN || github.token }}
-      GPR_USER: ${{ secrets.GPR_USER || github.actor }}
-
+      GPR_TOKEN: ${{ github.token }}
+      GPR_USER: ${{ github.actor }}
     steps:
       - name: Checkout product repository
         uses: actions/checkout@v5
@@ -29,13 +31,13 @@ jobs:
           git -C upstream/OwnTV fetch --depth 1 origin f17cffb7bc7118675e09c64e02a427d84902f6b3
           git -C upstream/OwnTV checkout --detach f17cffb7bc7118675e09c64e02a427d84902f6b3
 
-      - name: Check OwnTV_Core package credentials
+      - name: Apply product launcher overlay
         run: |
-          if [ -z "$GPR_TOKEN" ] || [ -z "$GPR_USER" ]; then
-            echo "No GitHub Packages credentials are available."
-            exit 1
-          fi
-          echo "GitHub Packages credentials are configured."
+          python3 -c 'from pathlib import Path; p=Path("upstream/OwnTV/app/src/main/AndroidManifest.xml"); s=p.read_text(); s=s.replace("android:label=\"@string/app_name\"", "android:label=\"IPTV Player\"", 1); a="""        <activity android:name=\"com.bilalmc.iptvplayer.ui.IptvShellActivity\" android:exported=\"true\" android:launchMode=\"singleTop\" android:windowSoftInputMode=\"adjustPan\" android:theme=\"@style/Theme.IPTVPlayer.Starting\"><intent-filter><action android:name=\"android.intent.action.MAIN\" /><category android:name=\"android.intent.category.LEANBACK_LAUNCHER\" /><category android:name=\"android.intent.category.LAUNCHER\" /></intent-filter><intent-filter><action android:name=\"android.intent.action.VIEW\" /><category android:name=\"android.intent.category.DEFAULT\" /><category android:name=\"android.intent.category.BROWSABLE\" /><data android:host=\"play\" android:scheme=\"owntv\" /><data android:host=\"open\" android:scheme=\"owntv\" /></intent-filter></activity>"""; s=s.replace("    </application>", a+"\n    </application>", 1); p.write_text(s)'
+
+      - name: Adapt pinned OwnTV app to API 37
+        run: |
+          python3 -c 'from pathlib import Path; p=Path("upstream/OwnTV/app/build.gradle.kts"); s=p.read_text(); old="""    compileSdk {\n        version = release(36) {\n            minorApiLevel = 1\n        }\n    }"""; assert old in s, "Expected OwnTV compileSdk block was not found"; p.write_text(s.replace(old, "    compileSdk = 37", 1))'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -46,13 +48,22 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK platforms used by the pinned stack
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install Android 17 SDK preview platform
+        run: |
+          sdkmanager --update || true
+          sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;${ANDROID_BUILD_TOOLS}"
+          test -d "$ANDROID_SDK_ROOT/platforms/android-37.0"
+          ln -sfn "$ANDROID_SDK_ROOT/platforms/android-37.0" "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
+
+      - name: Verify Android SDK installation
+        run: |
+          test -f "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}/android.jar"
+          test -d "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: "9.5.0"
+          gradle-version: "9.4.1"
 
       - name: Build product UI library
         run: gradle :product-ui:assembleDebug --stacktrace
@@ -74,5 +85,5 @@ jobs:
         with:
           name: android-build-artifacts
           path: |
-            app/build/outputs/**/*.apk
+            upstream/OwnTV/app/build/outputs/**/*.apk
             product-ui/build/outputs/**/*.aar

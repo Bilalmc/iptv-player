@@ -2,7 +2,6 @@ package com.bilalmc.iptvplayer.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.PagingData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,11 +56,45 @@ class ProductCatalogViewModel : ViewModel(), KoinComponent {
     val seasons: StateFlow<List<SeasonEntity>> = _selectedSeries.flatMapLatest { series -> if (series == null) flowOf(emptyList()) else seriesDao.seasons(series.id) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val _selectedSeasonId = MutableStateFlow<Long?>(null)
     val selectedSeasonId: StateFlow<Long?> = _selectedSeasonId
-    val episodes: StateFlow<List<EpisodeEntity>> = combine(_selectedSeries, _selectedSeasonId) { series, seasonId -> series?.id to seasonId }.flatMapLatest { (seriesId, seasonId) -> if (seriesId == null) flowOf(emptyList()) else if (seasonId == null) seriesDao.episodesBySeries(seriesId) else seriesDao.episodesBySeason(seasonId) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val episodes: StateFlow<List<EpisodeEntity>> = combine(listOf<Flow<Any?>>(_selectedSeries, _selectedSeasonId)) { values ->
+        val series = values[0] as SeriesEntity?
+        val seasonId = values[1] as Long?
+        series?.id to seasonId
+    }.flatMapLatest { (seriesId, seasonId) -> if (seriesId == null) flowOf(emptyList()) else if (seasonId == null) seriesDao.episodesBySeries(seriesId) else seriesDao.episodesBySeason(seasonId) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val settingsState: StateFlow<ProductSettingsState> = combine(settings.vodViewMode, settings.episodeViewMode, settings.resumeMode, settings.updateCheckOnStart, settings.rememberCategorySeries, settings.rememberLastSeries) { vod, episode, resume, update, rememberCategory, rememberItem -> ProductSettingsState(vod, episode, resume, update, rememberCategory, rememberItem) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductSettingsState())
+    val settingsState: StateFlow<ProductSettingsState> = combine(listOf<Flow<Any?>>(
+        settings.vodViewMode,
+        settings.episodeViewMode,
+        settings.resumeMode,
+        settings.updateCheckOnStart,
+        settings.rememberCategorySeries,
+        settings.rememberLastSeries,
+    )) { values ->
+        ProductSettingsState(
+            vodViewMode = values[0] as SettingsRepository.VodViewMode,
+            episodeViewMode = values[1] as SettingsRepository.VodViewMode,
+            resumeMode = values[2] as SettingsRepository.ResumeMode,
+            updateCheckOnStart = values[3] as Boolean,
+            rememberSeriesCategory = values[4] as Boolean,
+            rememberSeriesItem = values[5] as Boolean,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductSettingsState())
 
-    val epgRows: StateFlow<List<ProductEpgRow>> = combine(sourceIds, flow { while (true) { emit(System.currentTimeMillis()); delay(30_000) } }).flatMapLatest { (ids, now) -> if (ids.isEmpty()) flowOf(emptyList()) else flow { val channels = channelDao.snapshotAll(ids, 40); emit(channels.mapNotNull { channel -> val key = channel.epgChannelId?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null; ProductEpgRow(channel, epgDao.nowPlaying(key, now), epgDao.upcoming(key, now, 4).first()) }) } }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val epgRows: StateFlow<List<ProductEpgRow>> = combine(listOf<Flow<Any?>>(
+        sourceIds,
+        flow { while (true) { emit(System.currentTimeMillis()); delay(30_000) } },
+    )) { values -> values[0] as List<Long> to (values[1] as Long) }
+        .flatMapLatest { (ids, now) ->
+            if (ids.isEmpty()) flowOf(emptyList()) else flow {
+                val channels = channelDao.snapshotAll(ids, 40)
+                emit(channels.mapNotNull { channel ->
+                    val key = channel.epgChannelId?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    ProductEpgRow(channel, epgDao.nowPlaying(key, now), epgDao.upcoming(key, now, 4).first())
+                })
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val _epgRefreshing = MutableStateFlow(false)
     val epgRefreshing: StateFlow<Boolean> = _epgRefreshing
 

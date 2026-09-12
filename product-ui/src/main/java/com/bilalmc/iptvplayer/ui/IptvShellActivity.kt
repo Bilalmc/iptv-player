@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -16,7 +17,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +37,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.tv.material3.*
-import coil.compose.AsyncImage
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import coil3.compose.AsyncImage
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.EpisodeEntity
 import tv.own.owntv.core.database.entity.MovieEntity
@@ -66,25 +78,13 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
     var seriesDetail by rememberSaveable { mutableStateOf(false) }
     val navFocusRequester = remember { FocusRequester() }
     val nav = listOf(
-        NavItem("Home", androidx.compose.material.icons.Icons.Default.Home),
-        NavItem("Live TV", androidx.compose.material.icons.Icons.Default.LiveTv),
-        NavItem("TV Guide", androidx.compose.material.icons.Icons.Default.CalendarMonth),
-        NavItem("Movies", androidx.compose.material.icons.Icons.Default.Movie),
-        NavItem("Series", androidx.compose.material.icons.Icons.Default.VideoLibrary),
-        NavItem("Search", androidx.compose.material.icons.Icons.Default.Search),
-        NavItem("Favorites", androidx.compose.material.icons.Icons.Default.Favorite),
-        NavItem("Settings", androidx.compose.material.icons.Icons.Default.Settings),
+        NavItem("Home", Icons.Default.Home), NavItem("Live TV", Icons.Default.PlayArrow),
+        NavItem("TV Guide", Icons.Default.List), NavItem("Movies", Icons.Default.Info),
+        NavItem("Series", Icons.Default.Star), NavItem("Search", Icons.Default.Search),
+        NavItem("Favorites", Icons.Default.Favorite), NavItem("Settings", Icons.Default.Settings),
     )
-
-    BackHandler {
-        when {
-            seriesDetail -> seriesDetail = false
-            selected != 0 -> selected = 0
-        }
-    }
-
+    BackHandler { when { seriesDetail -> seriesDetail = false; selected != 0 -> selected = 0 } }
     LaunchedEffect(Unit) { navFocusRequester.requestFocus() }
-
     MaterialTheme {
         Row(Modifier.fillMaxSize().background(Color(0xFF08090D)).padding(28.dp)) {
             Column(Modifier.fillMaxHeight().width(152.dp).focusGroup(), verticalArrangement = Arrangement.Center) {
@@ -92,10 +92,7 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
                 Text("PLAYER", fontSize = 11.sp, color = Color(0xFF8B93A7), letterSpacing = 2.sp)
                 Spacer(Modifier.height(24.dp))
                 nav.forEachIndexed { i, item ->
-                    NavButton(item, i == selected, Modifier.then(if (i == 0) Modifier.focusRequester(navFocusRequester) else Modifier)) {
-                        selected = i
-                        seriesDetail = false
-                    }
+                    NavButton(item, i == selected, if (i == 0) Modifier.focusRequester(navFocusRequester) else Modifier) { selected = i; seriesDetail = false }
                     Spacer(Modifier.height(7.dp))
                 }
             }
@@ -103,7 +100,7 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column { Text("IPTV Player", fontSize = 13.sp, color = Color(0xFF8B93A7)); Text("What do you want to watch?", fontSize = 25.sp, fontWeight = FontWeight.SemiBold) }
-                    Row(verticalAlignment = Alignment.CenterVertically) { IconButtonNative(androidx.compose.material.icons.Icons.Default.Search, "Search") { selected = 5; seriesDetail = false }; Spacer(Modifier.width(14.dp)); Text(state.profileName, fontSize = 13.sp, color = Color(0xFFB8BFCE)) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { IconButtonNative(Icons.Default.Search, "Search") { selected = 5; seriesDetail = false }; Spacer(Modifier.width(14.dp)); Text(state.profileName, fontSize = 13.sp, color = Color(0xFFB8BFCE)) }
                 }
                 Spacer(Modifier.height(16.dp))
                 if (seriesDetail) ProductSeriesDetail(catalogVm, { seriesDetail = false }) { e, s -> onPlayEpisode(e, s) }

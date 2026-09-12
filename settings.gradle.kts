@@ -25,7 +25,8 @@ dependencyResolutionManagement {
                     .orElse(providers.environmentVariable("GPR_USER"))
                     .orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
                 password = providers.gradleProperty("gpr.token")
-                    .orElse(providers.environmentVariable("GPR_TOKEN")).orNull
+                    .orElse(providers.environmentVariable("GPR_TOKEN"))
+                    .orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull
             }
             content { includeGroup("tv.own.owntv") }
         }

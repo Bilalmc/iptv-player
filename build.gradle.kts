@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.LibraryExtension
 
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -13,6 +14,8 @@ plugins {
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<ApplicationExtension> {
+            compileSdk = 37
+
             defaultConfig {
                 applicationId = providers.gradleProperty("product.applicationId")
                     .orElse("com.bilalmc.iptvplayer")
@@ -21,15 +24,14 @@ subprojects {
                     .orElse("0.1.0")
                     .get()
             }
-
-            // OwnTV's app module is mounted from a git submodule. The manifest is deliberately
-            // supplied from the product repository so the launcher identity is ours while all
-            // OwnTV services/providers and its internal MainActivity remain available.
-            sourceSets.getByName("main") {
-                manifest.srcFile(rootProject.file("product-app/src/main/AndroidManifest.xml"))
-            }
         }
 
         dependencies.add("implementation", project(":product-ui"))
+    }
+
+    plugins.withId("com.android.library") {
+        extensions.configure<LibraryExtension> {
+            compileSdk = 37
+        }
     }
 }
