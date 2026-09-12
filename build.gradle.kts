@@ -14,8 +14,6 @@ plugins {
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<ApplicationExtension> {
-            // OwnTV's pinned dependency stack now requires API 37 at compile time. Keep the
-            // runtime target at the upstream value (36) while compiling the whole product against 37.
             compileSdk = 37
 
             defaultConfig {
@@ -25,13 +23,6 @@ subprojects {
                 versionName = providers.gradleProperty("product.versionName")
                     .orElse("0.1.0")
                     .get()
-            }
-
-            // OwnTV's app module is mounted from a git submodule. The manifest is deliberately
-            // supplied from the product repository so the launcher identity is ours while all
-            // OwnTV services/providers and its internal MainActivity remain available.
-            sourceSets.getByName("main") {
-                manifest.srcFile(rootProject.file("product-app/src/main/AndroidManifest.xml"))
             }
         }
 
