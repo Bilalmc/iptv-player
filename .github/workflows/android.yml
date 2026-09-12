@@ -12,7 +12,7 @@ permissions:
   packages: read
 
 env:
-  ANDROID_COMPILE_SDK: "36"
+  ANDROID_COMPILE_SDK: "37"
   ANDROID_BUILD_TOOLS: "36.0.0"
 
 jobs:
@@ -45,9 +45,10 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK platforms used by the pinned stack
+      - name: Install Android 17 SDK preview platform
         run: |
-          sdkmanager --install "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}"
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager --channel=3 --install "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}"
 
       - name: Verify Android SDK installation
         run: |
