@@ -13,7 +13,7 @@ permissions:
 
 env:
   ANDROID_COMPILE_SDK: "37"
-  ANDROID_BUILD_TOOLS: "36.0.0"
+  ANDROID_BUILD_TOOLS: "37.0.0"
 
 jobs:
   build:
@@ -47,10 +47,10 @@ jobs:
 
       - name: Install Android 17 SDK preview platform
         run: |
-          sdkmanager --licenses </dev/null >/dev/null 2>&1 || true
           sdkmanager --update || true
-          sdkmanager --channel=3 --list | grep -E 'platforms;android-37|build-tools;37' || true
-          sdkmanager --channel=3 --install "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}"
+          sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;${ANDROID_BUILD_TOOLS}"
+          test -d "$ANDROID_SDK_ROOT/platforms/android-37.0"
+          ln -sfn "$ANDROID_SDK_ROOT/platforms/android-37.0" "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
 
       - name: Verify Android SDK installation
         run: |
