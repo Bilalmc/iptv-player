@@ -123,10 +123,27 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android 17 SDK preview platform
+        shell: bash
         run: |
+          set -euo pipefail
           sdkmanager --update || true
-          sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;${ANDROID_BUILD_TOOLS}"
-          test -d "$ANDROID_SDK_ROOT/platforms/android-37.0"
+          sdkmanager --list > /tmp/sdkmanager-list.txt
+          channel=""
+          for candidate in 0 1 2 3; do
+            if sdkmanager --channel="$candidate" --list 2>/dev/null | grep -Fq "platforms;android-37.0"; then
+              channel="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$channel" ]]; then
+            echo "Android 17 platform package platforms;android-37.0 is not visible in any SDK channel."
+            grep -F "android-37" /tmp/sdkmanager-list.txt || true
+            exit 1
+          fi
+          echo "Installing Android 17 platform from sdkmanager channel $channel"
+          sdkmanager --channel="$channel" "platforms;android-37.0" "build-tools;${ANDROID_BUILD_TOOLS}"
+          test -f "$ANDROID_SDK_ROOT/platforms/android-37.0/android.jar"
+          test -d "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}"
           ln -sfn "$ANDROID_SDK_ROOT/platforms/android-37.0" "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
 
       - name: Verify Android SDK installation
