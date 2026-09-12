@@ -12,8 +12,8 @@ permissions:
   packages: read
 
 env:
-  ANDROID_COMPILE_SDK: "37"
-  ANDROID_BUILD_TOOLS: "37.0.0"
+  ANDROID_COMPILE_SDK: "36"
+  ANDROID_BUILD_TOOLS: "36.0.0"
 
 jobs:
   build:
@@ -96,18 +96,6 @@ jobs:
           p.write_text(s.replace(old, new, 1))
           PY
 
-      - name: Adapt pinned OwnTV app to API 37 toolchain
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("upstream/OwnTV/app/build.gradle.kts")
-          s = p.read_text()
-          old = '''    compileSdk {\n        version = release(36) {\n            minorApiLevel = 1\n        }\n    }'''
-          if old not in s:
-              raise SystemExit("Expected OwnTV compileSdk block was not found")
-          p.write_text(s.replace(old, "    compileSdk = 37", 1))
-          PY
-
       - name: Validate GitHub Packages credentials
         run: |
           test -n "$GPR_TOKEN"
@@ -122,31 +110,12 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android 17 SDK preview platform
-        shell: bash
+      - name: Install stable Android SDK baseline
         run: |
-          set -euo pipefail
-          sdkmanager --update || true
-          sdkmanager --list > /tmp/sdkmanager-list.txt
-          channel=""
-          for candidate in 0 1 2 3; do
-            if sdkmanager --channel="$candidate" --list 2>/dev/null | grep -Fq "platforms;android-37.0"; then
-              channel="$candidate"
-              break
-            fi
-          done
-          if [[ -z "$channel" ]]; then
-            echo "Android 17 platform package platforms;android-37.0 is not visible in any SDK channel."
-            grep -F "android-37" /tmp/sdkmanager-list.txt || true
-            exit 1
-          fi
-          echo "Installing Android 17 platform from sdkmanager channel $channel"
-          sdkmanager --channel="$channel" "platforms;android-37.0" "build-tools;${ANDROID_BUILD_TOOLS}"
-          test -f "$ANDROID_SDK_ROOT/platforms/android-37.0/android.jar"
-          test -d "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}"
-          ln -sfn "$ANDROID_SDK_ROOT/platforms/android-37.0" "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}"
 
-      - name: Verify Android SDK installation
+      - name: Verify Android SDK baseline
         run: |
           test -f "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}/android.jar"
           test -d "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}"
