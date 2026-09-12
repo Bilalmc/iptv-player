@@ -31,6 +31,20 @@ jobs:
           git -C upstream/OwnTV fetch --depth 1 origin f17cffb7bc7118675e09c64e02a427d84902f6b3
           git -C upstream/OwnTV checkout --detach f17cffb7bc7118675e09c64e02a427d84902f6b3
 
+      - name: Adapt pinned OwnTV app to API 37 toolchain
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("upstream/OwnTV/app/build.gradle.kts")
+          s = p.read_text()
+          old = '''    compileSdk {\n        version = release(36) {\n            minorApiLevel = 1\n        }\n    }'''
+          new = '''    compileSdk = 37'''
+          if old not in s:
+              raise SystemExit("Expected OwnTV compileSdk block was not found")
+          p.write_text(s.replace(old, new, 1))
+          PY
+          grep -A2 -n 'compileSdk' upstream/OwnTV/app/build.gradle.kts | head
+
       - name: Validate GitHub Packages credentials
         run: |
           test -n "$GPR_TOKEN"
