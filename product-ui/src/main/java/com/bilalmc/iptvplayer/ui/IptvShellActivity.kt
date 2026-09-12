@@ -38,14 +38,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.tv.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LiveTv
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Star
 import coil3.compose.AsyncImage
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.EpisodeEntity
@@ -78,9 +78,9 @@ private fun IptvPlayerShell(onOpenPlayer: () -> Unit, onPlayChannel: (ChannelEnt
     var seriesDetail by rememberSaveable { mutableStateOf(false) }
     val navFocusRequester = remember { FocusRequester() }
     val nav = listOf(
-        NavItem("Home", Icons.Default.Home), NavItem("Live TV", Icons.Default.LiveTv),
-        NavItem("TV Guide", Icons.Default.CalendarMonth), NavItem("Movies", Icons.Default.Movie),
-        NavItem("Series", Icons.Default.VideoLibrary), NavItem("Search", Icons.Default.Search),
+        NavItem("Home", Icons.Default.Home), NavItem("Live TV", Icons.Default.PlayArrow),
+        NavItem("TV Guide", Icons.Default.List), NavItem("Movies", Icons.Default.Info),
+        NavItem("Series", Icons.Default.Star), NavItem("Search", Icons.Default.Search),
         NavItem("Favorites", Icons.Default.Favorite), NavItem("Settings", Icons.Default.Settings),
     )
     BackHandler { when { seriesDetail -> seriesDetail = false; selected != 0 -> selected = 0 } }
