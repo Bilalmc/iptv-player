@@ -46,13 +46,10 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Refresh Android SDK package index
-        run: sdkmanager --update
-
       - name: Install Android SDK platforms used by the pinned stack
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}"
+          sdkmanager --install "platforms;android-${ANDROID_COMPILE_SDK}" "build-tools;${ANDROID_BUILD_TOOLS}"
 
       - name: Verify Android SDK installation
         run: |
