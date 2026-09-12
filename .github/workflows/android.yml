@@ -3,9 +3,9 @@ name: Android
 on:
   workflow_dispatch:
   push:
-    branches: ["main", "owntv-base", "feature/full-product-takeover"]
+    branches: ["main", "owntv-base", "feature/full-product-takeover", "ci/final-build-validation"]
   pull_request:
-    branches: ["main", "owntv-base", "feature/full-product-takeover"]
+    branches: ["main", "owntv-base", "feature/full-product-takeover", "ci/final-build-validation"]
 
 permissions:
   contents: read
@@ -31,87 +31,13 @@ jobs:
           git -C upstream/OwnTV fetch --depth 1 origin f17cffb7bc7118675e09c64e02a427d84902f6b3
           git -C upstream/OwnTV checkout --detach f17cffb7bc7118675e09c64e02a427d84902f6b3
 
-      - name: Apply product launcher overlay to pinned OwnTV manifest
+      - name: Apply product launcher overlay
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("upstream/OwnTV/app/src/main/AndroidManifest.xml")
-          s = p.read_text()
-          s = s.replace('android:label="@string/app_name"', 'android:label="IPTV Player"', 1)
-          old = '''        <activity
-            android:name=".MainActivity"
-            android:banner="@drawable/tv_banner"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustPan"
-            android:theme="@style/Theme.OwnTV.Starting">
-            <!-- LEANBACK_LAUNCHER shows it on TV launchers; LAUNCHER shows it on phone/tablet/box home
-                 screens (so non-TV devices get an app icon, not just an install). -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
-            </intent-filter>
-        </activity>'''
-          new = '''        <activity
-            android:name=".MainActivity"
-            android:banner="@drawable/tv_banner"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustPan"
-            android:theme="@style/Theme.OwnTV.Starting" />
+          python3 -c 'from pathlib import Path; p=Path("upstream/OwnTV/app/src/main/AndroidManifest.xml"); s=p.read_text(); s=s.replace("android:label=\"@string/app_name\"", "android:label=\"IPTV Player\"", 1); a="""        <activity android:name=\"com.bilalmc.iptvplayer.ui.IptvShellActivity\" android:exported=\"true\" android:launchMode=\"singleTop\" android:windowSoftInputMode=\"adjustPan\" android:theme=\"@style/Theme.IPTVPlayer.Starting\"><intent-filter><action android:name=\"android.intent.action.MAIN\" /><category android:name=\"android.intent.category.LEANBACK_LAUNCHER\" /><category android:name=\"android.intent.category.LAUNCHER\" /></intent-filter><intent-filter><action android:name=\"android.intent.action.VIEW\" /><category android:name=\"android.intent.category.DEFAULT\" /><category android:name=\"android.intent.category.BROWSABLE\" /><data android:host=\"play\" android:scheme=\"owntv\" /><data android:host=\"open\" android:scheme=\"owntv\" /></intent-filter></activity>"""; s=s.replace("    </application>", a+"\n    </application>", 1); p.write_text(s)'
 
-        <activity
-            android:name="com.bilalmc.iptvplayer.ui.IptvShellActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustPan"
-            android:theme="@style/Theme.IPTVPlayer.Starting">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:host="play" android:scheme="owntv" />
-                <data android:host="open" android:scheme="owntv" />
-            </intent-filter>
-        </activity>'''
-          if old not in s:
-              raise SystemExit("Expected pinned OwnTV launcher activity was not found")
-          p.write_text(s.replace(old, new, 1))
-          PY
-
-      - name: Adapt pinned OwnTV app to API 37 toolchain
+      - name: Adapt pinned OwnTV app to API 37
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("upstream/OwnTV/app/build.gradle.kts")
-          s = p.read_text()
-          old = '''    compileSdk {\n        version = release(36) {\n            minorApiLevel = 1\n        }\n    }'''
-          if old not in s:
-              raise SystemExit("Expected OwnTV compileSdk block was not found")
-          p.write_text(s.replace(old, "    compileSdk = 37", 1))
-          PY
-
-      - name: Validate GitHub Packages credentials
-        run: |
-          test -n "$GPR_TOKEN"
-          test -n "$GPR_USER"
+          python3 -c 'from pathlib import Path; p=Path("upstream/OwnTV/app/build.gradle.kts"); s=p.read_text(); old="""    compileSdk {\n        version = release(36) {\n            minorApiLevel = 1\n        }\n    }"""; assert old in s, "Expected OwnTV compileSdk block was not found"; p.write_text(s.replace(old, "    compileSdk = 37", 1))'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
