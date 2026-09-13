@@ -39,17 +39,14 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path("upstream/OwnTV/app/build.gradle.kts")
           s = p.read_text()
-          old = '''compileSdk {
-              version = release(36) {
-                  minorApiLevel = 1
-              }
-          }'''
-          new = "compileSdk = 37"
-          if old not in s:
+          pattern = r'compileSdk \{\s*version = release\(36\) \{\s*minorApiLevel = 1\s*\}\s*\}'
+          updated, count = re.subn(pattern, "compileSdk = 37", s, count=1)
+          if count != 1:
               raise SystemExit("Expected OwnTV compileSdk block was not found")
-          p.write_text(s.replace(old, new, 1))
+          p.write_text(updated)
           PY
 
       - name: Validate GitHub Packages credentials
