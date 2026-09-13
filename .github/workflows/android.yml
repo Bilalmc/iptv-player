@@ -13,6 +13,7 @@ permissions:
 
 env:
   ANDROID_COMPILE_SDK: "37"
+  ANDROID_SDK_PLATFORM: "37.0"
   ANDROID_BUILD_TOOLS: "36.0.0"
 
 jobs:
@@ -52,15 +53,19 @@ jobs:
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "build-tools;${ANDROID_BUILD_TOOLS}" || true
-          sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" || true
+          sdkmanager "platforms;android-${ANDROID_SDK_PLATFORM}" || true
           if [ ! -f "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}/android.jar" ]; then
             echo "sdkmanager did not provide android-${ANDROID_COMPILE_SDK}; installing the platform archive directly"
             tmp_dir="$(mktemp -d)"
-            curl -fsSL "https://dl.google.com/android/repository/platform-${ANDROID_COMPILE_SDK}_r01.zip" -o "$tmp_dir/platform.zip"
-            rm -rf "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
-            mkdir -p "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
+            curl -fsSL "https://dl.google.com/android/repository/platform-${ANDROID_SDK_PLATFORM}_r02.zip" -o "$tmp_dir/platform.zip"
+            rm -rf "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}"
+            mkdir -p "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}"
             unzip -q "$tmp_dir/platform.zip" -d "$tmp_dir/unpacked"
-            cp -a "$tmp_dir/unpacked/android-${ANDROID_COMPILE_SDK}/." "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}/"
+            cp -a "$tmp_dir/unpacked/android-${ANDROID_SDK_PLATFORM}/." "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}/"
+          fi
+          if [ ! -f "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}/android.jar" ]; then
+            rm -rf "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
+            cp -a "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}" "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_COMPILE_SDK}"
           fi
 
       - name: Verify Android SDK baseline
