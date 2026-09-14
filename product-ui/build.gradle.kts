@@ -36,7 +36,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
-    implementation("tv.own.owntv:core:1.0.17")
+    compileOnly("tv.own.owntv:core:1.0.17")
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
