@@ -98,6 +98,31 @@ jobs:
       - name: Build x86_64 emulator APK
         run: gradle :app:assembleX86_64Debug --stacktrace
 
+      - name: Prepare CI release signing
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "KEYSTORE_FILE=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=androiddebugkey" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Build standard release APK
+        run: gradle :app:assembleStandardRelease --stacktrace
+
+      - name: Build x86_64 release APK
+        run: gradle :app:assembleX86_64Release --stacktrace
+
       - name: Run app unit tests
         run: gradle :app:testStandardDebugUnitTest --stacktrace
 
