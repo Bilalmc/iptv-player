@@ -63,6 +63,20 @@ jobs:
           p.write_text(updated)
           PY
 
+      - name: Prevent duplicate OwnTV Core runtime packaging
+        run: |
+          cat >> upstream/OwnTV/app/build.gradle.kts <<'KTS'
+
+          // The pinned OwnTV app already contains tv.own.owntv.core sources.
+          // The product UI uses the published Core only as a compile-time API surface.
+          // Do not package that second Core implementation into the application runtime.
+          configurations.configureEach {
+              if (isCanBeResolved && name.contains("Runtime", ignoreCase = true)) {
+                  exclude(group = "tv.own.owntv", module = "core")
+              }
+          }
+          KTS
+
       - name: Validate GitHub Packages credentials
         run: |
           test -n "$GPR_TOKEN"
