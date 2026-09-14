@@ -54,6 +54,7 @@ jobs:
           test -n "$GPR_TOKEN"
           test -n "$GPR_USER"
 
+      # JDK 21 is required by the pinned OwnTV unit-test bytecode.
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
