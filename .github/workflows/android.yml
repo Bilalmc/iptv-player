@@ -49,6 +49,20 @@ jobs:
           p.write_text(updated)
           PY
 
+      - name: Disable R8 for CI release packaging
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("upstream/OwnTV/app/build.gradle.kts")
+          s = p.read_text()
+          pattern = r'(release \{\s*optimization \{\s*enable = )true'
+          updated, count = re.subn(pattern, r'\1false', s, count=1)
+          if count != 1:
+              raise SystemExit("Expected release optimization block was not found")
+          p.write_text(updated)
+          PY
+
       - name: Validate GitHub Packages credentials
         run: |
           test -n "$GPR_TOKEN"
