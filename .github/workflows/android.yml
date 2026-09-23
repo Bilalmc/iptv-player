@@ -11,14 +11,17 @@ permissions:
   contents: read
   packages: read
 
+env:
+  ANDROID_COMPILE_SDK: "37"
+  ANDROID_SDK_PLATFORM: "37.0"
+  ANDROID_BUILD_TOOLS: "36.0.0"
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
-      GPR_TOKEN: ${{ secrets.GPR_TOKEN || github.token }}
-      GPR_USER: ${{ secrets.GPR_USER || github.actor }}
-
+      GPR_TOKEN: ${{ github.token }}
+      GPR_USER: ${{ github.actor }}
     steps:
       - name: Checkout product repository
         uses: actions/checkout@v5
@@ -29,30 +32,98 @@ jobs:
           git -C upstream/OwnTV fetch --depth 1 origin f17cffb7bc7118675e09c64e02a427d84902f6b3
           git -C upstream/OwnTV checkout --detach f17cffb7bc7118675e09c64e02a427d84902f6b3
 
-      - name: Check OwnTV_Core package credentials
-        run: |
-          if [ -z "$GPR_TOKEN" ] || [ -z "$GPR_USER" ]; then
-            echo "No GitHub Packages credentials are available."
-            exit 1
-          fi
-          echo "GitHub Packages credentials are configured."
+      - name: Apply product launcher overlay
+        run: python3 scripts/apply-product-overlay.py upstream/OwnTV/app/src/main/AndroidManifest.xml
 
-      - name: Set up JDK 17
+      - name: Align OwnTV compileSdk with product dependencies
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("upstream/OwnTV/app/build.gradle.kts")
+          s = p.read_text()
+          pattern = r'compileSdk \{\s*version = release\(36\) \{\s*minorApiLevel = 1\s*\}\s*\}'
+          updated, count = re.subn(pattern, "compileSdk = 37", s, count=1)
+          if count != 1:
+              raise SystemExit("Expected OwnTV compileSdk block was not found")
+          p.write_text(updated)
+          PY
+
+      - name: Disable R8 for CI release packaging
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("upstream/OwnTV/app/build.gradle.kts")
+          s = p.read_text()
+          pattern = r'(release \{\s*optimization \{\s*enable = )true'
+          updated, count = re.subn(pattern, r'\1false', s, count=1)
+          if count != 1:
+              raise SystemExit("Expected release optimization block was not found")
+          p.write_text(updated)
+          PY
+
+      - name: Prevent duplicate OwnTV Core runtime packaging
+        run: |
+          cat >> upstream/OwnTV/app/build.gradle.kts <<'KTS'
+
+          // The pinned OwnTV app already contains tv.own.owntv.core sources.
+          // The product UI uses the published Core only as a compile-time API surface.
+          // Do not package that second Core implementation into the application runtime.
+          configurations.configureEach {
+              if (isCanBeResolved && name.contains("Runtime", ignoreCase = true)) {
+                  exclude(group = "tv.own.owntv", module = "core")
+              }
+          }
+          KTS
+
+      - name: Validate GitHub Packages credentials
+        run: |
+          test -n "$GPR_TOKEN"
+          test -n "$GPR_USER"
+
+      # JDK 21 is required by the pinned OwnTV unit-test bytecode.
+      - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Prepare Android SDK
+        run: |
+          if [ -z "$ANDROID_SDK_ROOT" ]; then
+            export ANDROID_SDK_ROOT="\${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          fi
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/16.0/bin" >> "$GITHUB_PATH"
+          test -x "$ANDROID_SDK_ROOT/cmdline-tools/16.0/bin/sdkmanager" || test -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
 
-      - name: Install Android SDK platforms used by the pinned stack
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install Android SDK baseline
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "build-tools;${ANDROID_BUILD_TOOLS}" || true
+          sdkmanager "platforms;android-${ANDROID_SDK_PLATFORM}" || true
+          if [ ! -f "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}/android.jar" ]; then
+            echo "sdkmanager did not provide android-${ANDROID_SDK_PLATFORM}; installing the platform archive directly"
+            tmp_dir="$(mktemp -d)"
+            curl -fsSL "https://dl.google.com/android/repository/platform-${ANDROID_SDK_PLATFORM}_r02.zip" -o "$tmp_dir/platform.zip"
+            rm -rf "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}"
+            mkdir -p "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}"
+            unzip -q "$tmp_dir/platform.zip" -d "$tmp_dir/unpacked"
+            cp -a "$tmp_dir/unpacked/android-${ANDROID_SDK_PLATFORM}/." "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}/"
+          fi
+
+      - name: Verify Android SDK baseline
+        run: |
+          test -f "$ANDROID_SDK_ROOT/platforms/android-${ANDROID_SDK_PLATFORM}/android.jar"
+          test -d "$ANDROID_SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: "9.5.0"
+          gradle-version: "9.4.1"
 
       - name: Build product UI library
         run: gradle :product-ui:assembleDebug --stacktrace
@@ -62,6 +133,31 @@ jobs:
 
       - name: Build x86_64 emulator APK
         run: gradle :app:assembleX86_64Debug --stacktrace
+
+      - name: Prepare CI release signing
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "KEYSTORE_FILE=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=androiddebugkey" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Build standard release APK
+        run: gradle :app:assembleStandardRelease --stacktrace
+
+      - name: Build x86_64 release APK
+        run: gradle :app:assembleX86_64Release --stacktrace
 
       - name: Run app unit tests
         run: gradle :app:testStandardDebugUnitTest --stacktrace
@@ -74,5 +170,5 @@ jobs:
         with:
           name: android-build-artifacts
           path: |
-            app/build/outputs/**/*.apk
+            upstream/OwnTV/app/build/outputs/**/*.apk
             product-ui/build/outputs/**/*.aar
