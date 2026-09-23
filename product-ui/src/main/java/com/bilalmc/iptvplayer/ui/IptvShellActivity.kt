@@ -49,9 +49,6 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import coil3.compose.AsyncImage
@@ -111,7 +108,7 @@ private fun IptvPlayerShell(
         when {
             seriesDetail -> seriesDetail = false
             selected != 0 -> selected = 0
-            else -> finish()
+            else -> selected = 0
         }
     }
 
@@ -185,13 +182,13 @@ private fun XcHome(
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            XcMainTile("LIVE TV", Icons.Default.Tv, "\${state.channelCount} channels", goLive)
+            XcMainTile("LIVE TV", Icons.Default.Home, "\${state.channelCount} channels", goLive)
             Spacer(Modifier.width(18.dp))
             XcMainTile("TV GUIDE", Icons.Default.List, "Now & next", goGuide)
             Spacer(Modifier.width(18.dp))
-            XcMainTile("MOVIES", Icons.Default.Movie, "\${state.movieCount} titles", goMovies)
+            XcMainTile("MOVIES", Icons.Default.Info, "\${state.movieCount} titles", goMovies)
             Spacer(Modifier.width(18.dp))
-            XcMainTile("SERIES", Icons.Default.VideoLibrary, "\${state.seriesCount} series", goSeries)
+            XcMainTile("SERIES", Icons.Default.Star, "\${state.seriesCount} series", goSeries)
         }
         Spacer(Modifier.height(18.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
